@@ -369,6 +369,16 @@ function build_s_matrix_and_g_vector!(
     end
 end
 
+# Private DPOSV-equivalent phase. LAPACK potrf! returns positive info rather
+# than throwing for a non-positive leading minor. Never run substitution on
+# that partial factor: C DPOSV leaves the RHS unchanged on factorization failure.
+function _solve_direct_sr!(S::Matrix{Float64}, g::Vector{Float64})::Int
+    _, factor_info = potrf!('U', S)
+    factor_info != 0 && return 1
+    potrs!('U', S, g)
+    return 0
+end
+
 """
     stochastic_opt!(data::ExpertModeData, state::VMCOptimizationState) -> Int
 
@@ -518,11 +528,7 @@ function stochastic_opt!(data::ExpertModeData, state::VMCOptimizationState, c_ti
     info = 0
     ctimer_start!(c_timer, 57)
     try
-        # Cholesky decomposition (upper triangular)
-        potrf!('U', S)
-
-        # Forward/backward substitution (overwrites g with solution x)
-        potrs!('U', S, g)
+        info = _solve_direct_sr!(S, g)
     catch e
         @error "DPOSV failed: $e"
         info = 1

@@ -61,6 +61,7 @@ end
     include("../test_unit/helpers/mock_state.jl")
     include("../test_unit/helpers/mock_data.jl")
     include("../test_unit/test_unit_stochastic_opt.jl")
+    include("../test_unit/test_unit_direct_sr_factor_failure.jl")
     include("../test_unit/test_unit_vmc_sampling_rbm.jl")
     include("../test_unit/test_unit_vmc_sampling_proj.jl")
     include("../test_unit/test_unit_vmc_sampling_misc.jl")
