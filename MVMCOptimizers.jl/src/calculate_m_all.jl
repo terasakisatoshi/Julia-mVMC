@@ -17,6 +17,7 @@ using Base.Threads
 
 include("ordinary_real_factor.jl")
 include("ordinary_real_inverse.jl")
+include("ordinary_complex_inverse.jl")
 
 """
     calculate_m_all_child_fcmp!(
@@ -202,7 +203,7 @@ function calculate_m_all_child_fcmp!(
 
     # Copy LTL-decomposed matrix back to inv_m (it was already modified by julia_zsktf2_turbo!)
     # buf_m already has the LTL result, but we'll use inv_m directly
-    utu2inv!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
+    _ordinary_utu2inv_complex_c_order!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
     #cimpl_utu2inv!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
 
     # C implementation applies M_ZSCAL(&nsq, &minus_one, invM, &one) for row-major
