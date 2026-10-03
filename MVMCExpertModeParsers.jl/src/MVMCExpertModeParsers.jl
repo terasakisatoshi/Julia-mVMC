@@ -244,6 +244,7 @@ function apply_orbital_opt_flags_from_files!(
 )
     orbital_opt_flags = Dict{Int,Int}()
     n_orbital_anti_parallel = 0
+    orbital_complex_sum = 0
 
     for (file_type, file_path) in file_list
         if !(
@@ -260,6 +261,17 @@ function apply_orbital_opt_flags_from_files!(
 
         result, opt_flags, header_count = parse_orbital_def(full_path)
         result.success || continue
+
+        # Read the declaration, not populated terms: a section may reserve
+        # parameters without supplying a corresponding mapping record.
+        header = split(read(full_path, String), '\n')
+        if length(header) >= 3
+            fields = split(clean_line(header[3]))
+            if length(fields) == 2 && fields[1] == "ComplexType"
+                declaration = parse(Int, fields[2])
+                orbital_complex_sum += declaration
+            end
+        end
 
         # Record NArrayAP from the header (C's iNOrbitalAntiParallel) before the
         # opt-flag emptiness check, so the parallel opt-flag offset below is
@@ -286,7 +298,7 @@ function apply_orbital_opt_flags_from_files!(
         end
     end
 
-    set_orbital_opt_flags!(data, orbital_opt_flags)
+    set_orbital_opt_flags!(data, orbital_opt_flags; orbital_complex = orbital_complex_sum > 0)
 end
 
 function apply_rbm_opt_flags_from_files!(
