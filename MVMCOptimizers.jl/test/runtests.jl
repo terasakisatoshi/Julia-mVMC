@@ -73,6 +73,7 @@ end
     include("../test_unit/test_unit_parameter_sync.jl")
     include("../test_unit/test_unit_types.jl")
     include("../test_unit/test_unit_data_io_full_var.jl")
+    include("../test_unit/test_unit_c_window_output.jl")
     include("../test_unit/test_unit_retained_parameters.jl")
     include("../test_unit/test_unit_cg_c_recurrence.jl")
     include("../test_unit/test_unit_threading.jl")
