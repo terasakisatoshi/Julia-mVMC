@@ -63,6 +63,7 @@ end
     include("../test_unit/test_unit_stochastic_opt.jl")
     include("../test_unit/test_unit_direct_sr_factor_failure.jl")
     include("../test_unit/test_unit_vmc_sampling_rbm.jl")
+    include("../test_unit/test_unit_rbm_counter_order.jl")
     include("../test_unit/test_unit_vmc_sampling_proj.jl")
     include("../test_unit/test_unit_vmc_sampling_misc.jl")
     include("../test_unit/test_unit_vmc_sampling_qp_split.jl")

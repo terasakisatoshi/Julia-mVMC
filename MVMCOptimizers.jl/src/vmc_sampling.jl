@@ -571,13 +571,17 @@ function make_rbm_cnt(ele_num::Vector{Int}, data::ExpertModeData)::Vector{Comple
     end
 
     # Coupling between physical and hidden layers.
+    # C MakeRBMCnt sums the couplings from zero, then adds that sum to
+    # the hidden bias once. Accumulating directly into the bias changes
+    # the arithmetic (and can lose a small bias through cancellation).
+    coupling = zeros(ComplexF64, n_charge_neuron + n_spin_neuron + n_general_neuron)
     for term in data.charge_rbm_phys_hidden_terms
         ri = term.site1
         hi = term.site2 + 1
         idx = hidden_offset + hi
         if 0 <= ri < n_site && 1 <= hi <= n_charge_neuron && 1 <= idx <= length(rbm_cnt)
             xi = ele_num[ri+1] + ele_num[ri+n_site+1] - 1
-            rbm_cnt[idx] += term.value * xi
+            coupling[idx - hidden_offset] += term.value * xi
         end
     end
     for term in data.spin_rbm_phys_hidden_terms
@@ -586,7 +590,7 @@ function make_rbm_cnt(ele_num::Vector{Int}, data::ExpertModeData)::Vector{Comple
         idx = spin_hidden_offset + hi
         if 0 <= ri < n_site && 1 <= hi <= n_spin_neuron && 1 <= idx <= length(rbm_cnt)
             xi = ele_num[ri+1] - ele_num[ri+n_site+1]
-            rbm_cnt[idx] += term.value * xi
+            coupling[idx - hidden_offset] += term.value * xi
         end
     end
     for term in data.general_rbm_phys_hidden_terms
@@ -600,8 +604,11 @@ function make_rbm_cnt(ele_num::Vector{Int}, data::ExpertModeData)::Vector{Comple
            1 <= idx <= length(rbm_cnt)
             rsi = ri + si * n_site
             xi = 2 * ele_num[rsi+1] - 1
-            rbm_cnt[idx] += term.value * xi
+            coupling[idx - hidden_offset] += term.value * xi
         end
+    end
+    for hi in eachindex(coupling)
+        rbm_cnt[hidden_offset + hi] += coupling[hi]
     end
 
     return rbm_cnt
