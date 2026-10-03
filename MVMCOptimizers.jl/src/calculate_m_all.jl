@@ -15,6 +15,8 @@ using PfaPack: cimpl_utu2inv!, utu2pfa, utu2inv!
 using PfaPack: julia_zsktf2!, julia_dsktf2!, julia_zsktf2_turbo!
 using Base.Threads
 
+include("ordinary_real_factor.jl")
+
 """
     calculate_m_all_child_fcmp!(
         ele_idx::Vector{Int},
@@ -609,8 +611,8 @@ function calculate_m_all_child_real!(
 
     # LTL decomposition (upper triangular)
     # M_DSKTRF("U", "N", &n, invM, &lda, iwork, bufM, &nsq, &info)
-    # Use optimized Julia DSKTF2 (same performance as Fortran)
-    info = julia_dsktf2!(inv_m, iwork)
+    # Private scalar DSKTF2 preserves the C rank-2 operation order.
+    info = _ordinary_dsktf2_c_order!(inv_m, iwork)
     if info != 0
         return info
     end

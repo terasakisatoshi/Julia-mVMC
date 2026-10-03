@@ -1,0 +1,1 @@
+BLAS=OpenBLAS 0.3.26 NO_LAPACKE DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64; actual_threads=1; parallel_backend=1; OPENBLAS_NUM_THREADS=1 requested; serial single-rank adapter
