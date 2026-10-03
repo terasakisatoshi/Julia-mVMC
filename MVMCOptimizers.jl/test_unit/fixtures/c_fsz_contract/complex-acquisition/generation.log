@@ -1,0 +1,41 @@
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/mVMC/matrix.c: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/mVMC/vmcmake_fsz.c: OK
+In file included from /workspaces/mvmc-rs/extern/mVMC-1.3.0/src/common/blalink.hh:17,
+                 from /workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/pfaffian.tcc:8,
+                 from /workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/ltl2inv.cc:6:
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/common/blalink_fort.h: In function 'char diag2char(diag_t)':
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/common/blalink_fort.h:58:1: warning: control reaches end of non-void function [-Wreturn-type]
+   58 | }
+      | ^
+BLAS=OpenBLAS 0.3.26 NO_LAPACKE DYNAMIC_ARCH NO_AFFINITY Haswell MAX_THREADS=64; actual_threads=1; serial adapter
+error: makeInitialSample: Too many loops
+/tmp/mvmc-julia-fsz-complex-acquisition/generate_complex.sh: OK
+/tmp/mvmc-julia-fsz-complex101.4NALRe/complex_probe.c: OK
+/tmp/mvmc-julia-fsz-complex101.4NALRe/initializer.inc: OK
+/tmp/mvmc-julia-fsz-complex101.4NALRe/matrix.inc: OK
+/tmp/mvmc-julia-fsz-complex101.4NALRe/projection.inc: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/mVMC/matrix.c: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/mVMC/vmcmake_fsz.c: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/mVMC/projection.c: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/sfmt/SFMT.c: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/sfmt/SFMT.h: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/sfmt/SFMT-params.h: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/sfmt/SFMT-params19937.h: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/sfmt/SFMT-sse2.h: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/pfapack/fortran/zsktrf.f: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/pfapack/fortran/zsktf2.f: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/pfapack/fortran/zlasktrf.f: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/pfapack/fortran/zskr2.f: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/pfapack/fortran/zskr2k.f: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/ltl2inv.cc: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/ilaenv_lauum.cc: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/ilaenv_wrap.f90: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/invert.tcc: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/pfaffian.tcc: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/ltl2inv/trmmt.tcc: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/common/blalink.hh: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/common/blalink_fort.h: OK
+/workspaces/mvmc-rs/extern/mVMC-1.3.0/src/common/colmaj.hh: OK
+158ac5e7b45ac10e4965635e7ef0fae7a2b91d008f007cd77620739c871836f9  /tmp/mvmc-julia-fsz-complex101.4NALRe/probe
+80904237b85afb4ca9f49ce7bc807bab55ba35dc0ff9b5da2f345d3f4f43eee7  /tmp/mvmc-julia-fsz-complex101.4NALRe/results.txt
+b2a98556d7fde8964a8eb63f68408190917c6e32b45652888d8707eeef88482c  /tmp/mvmc-julia-fsz-complex101.4NALRe/complex-initializer-101.txt

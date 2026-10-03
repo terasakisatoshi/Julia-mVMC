@@ -3396,12 +3396,13 @@ function calculate_m_all_fsz!(
         buf_m = thread_ws.buf_m_complex
 
         # Call the LTL factorization (zsktf2) - only needs matrix and pivot array
-        julia_zsktf2!(inv_m, iwork)
+        info = julia_zsktf2!(inv_m, iwork)
+        info != 0 && return info
 
         # Calculate Pfaffian using utu2pfa(n, a, lda, ipiv)
         pfaff = utu2pfa(n_size, inv_m, n_size, iwork)
-        if !isfinite(real(pfaff)) || !isfinite(imag(pfaff))
-            return qp_idx
+        if !isfinite(real(pfaff) + imag(pfaff))
+            return qp_local
         end
         pf_m_temp[qp_local] = pfaff
 
@@ -3702,15 +3703,12 @@ function make_initial_sample_fsz!(
         # Calculate Pfaffian
         flag = calculate_m_all_fsz!(ele_idx, ele_spn, qp_start, qp_end, data, state)
 
-        if flag == 0
-            break
-        end
-
         loop += 1
         if loop > max_loops
             @error "makeInitialSample_fsz: Too many loops"
             return 1
         end
+        flag == 0 && break
     end
 
     dump_elec_initial_if_enabled(
@@ -3809,15 +3807,12 @@ function make_initial_sample_fsz_real!(
         make_proj_cnt!(ele_proj_cnt, ele_num, data)
 
         flag = calculate_m_all_fsz_real!(ele_idx, ele_spn, qp_start, qp_end, data, state)
-        if flag == 0
-            break
-        end
-
         loop += 1
         if loop > max_loops
             @error "makeInitialSample_fsz_real: Too many loops"
             return 1
         end
+        flag == 0 && break
     end
 
     dump_elec_initial_if_enabled(
@@ -4858,7 +4853,7 @@ end
 
 function save_ele_config_fsz!(
     sample::Int,
-    log_ip::ComplexF64,
+    log_ip::Union{Float64,ComplexF64},
     ele_idx::Vector{Int},
     ele_cfg::Vector{Int},
     ele_num::Vector{Int},
@@ -5042,31 +5037,44 @@ function calculate_m_all_fsz_real!(
     end
     qp_start == qp_end && return 0
 
-    info = calculate_m_all_fsz!(ele_idx, ele_spn, qp_start, qp_end, data, state)
-    if info != 0
-        return info
+    qp_num = qp_end - qp_start
+    ws = state.workspace
+    inv_m_temp = view(ws.inv_m_real_temp, :, :, 1:qp_num)
+    pf_m_temp = view(ws.pf_m_real_temp, 1:qp_num)
+    thread_ws = get_thread_workspace(ws.pfapack_workspace)
+    n_site = data.modpara.nsite
+    n_site2 = 2 * n_site
+    for qp_local = 1:qp_num
+        qp_global = qp_start + qp_local - 1
+        slater_offset = (qp_global - 1) * n_site2 * n_site2
+        inv_m = view(inv_m_temp, :, :, qp_local)
+        @inbounds for msi = 1:n_size, msj = 1:n_size
+            rsi = ele_idx[msi] + ele_spn[msi] * n_site
+            rsj = ele_idx[msj] + ele_spn[msj] * n_site
+            inv_m[msj, msi] = -state.slater_matrix.slater_elm_real[
+                slater_offset + rsi * n_site2 + rsj + 1
+            ]
+        end
+        info = julia_dsktf2!(inv_m, thread_ws.iwork)
+        info != 0 && return info
+        pfaff = utu2pfa(n_size, inv_m, n_size, thread_ws.iwork)
+        !isfinite(pfaff) && return qp_local
+        pf_m_temp[qp_local] = pfaff
+        cimpl_utu2inv!(n_size, inv_m, n_size, thread_ws.iwork,
+            thread_ws.v_t_real, thread_ws.buf_m_real, n_size)
+        inv_m .*= -1
     end
 
-    qp_num = qp_end - qp_start
-    # Real/complex buffers are expected to use canonical VMCOptimizationState
-    # sizes. A malformed undersized state should fail here instead of silently
-    # skipping part of the copy.
-    copy_complex_realpart!(
-        view(state.slater_matrix.pf_m_real, qp_start:(qp_end-1)),
-        view(state.slater_matrix.pf_m, qp_start:(qp_end-1)),
-        qp_num;
-        threaded = true,
-    )
-
+    # Preserve Julia's all-QP staged publication; leave complex shadows and
+    # inverse padding untouched. C uses local QP indices for nonfinite status.
     nsq = n_size * n_size
-    dst_start = (qp_start - 1) * nsq + 1
-    n_copy = qp_num * nsq
-    copy_complex_realpart!(
-        view(state.slater_matrix.inv_m_real, dst_start:(dst_start+n_copy-1)),
-        view(state.slater_matrix.inv_m, dst_start:(dst_start+n_copy-1)),
-        n_copy;
-        threaded = true,
-    )
+    for qp_local = 1:qp_num
+        qp_global = qp_start + qp_local - 1
+        state.slater_matrix.pf_m_real[qp_global] = pf_m_temp[qp_local]
+        dst_start = (qp_global - 1) * nsq + 1
+        copyto!(view(state.slater_matrix.inv_m_real, dst_start:(dst_start+nsq-1)),
+            vec(view(inv_m_temp, :, :, qp_local)))
+    end
 
     return 0
 end
