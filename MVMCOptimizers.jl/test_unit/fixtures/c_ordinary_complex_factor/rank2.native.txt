@@ -1,0 +1,2 @@
+complex-rank2-boundary status=0 factor=0 pfa_calls=1 inverse_calls=1 pf_re=-1 pf_im=0
+pivots 1 2 3 4

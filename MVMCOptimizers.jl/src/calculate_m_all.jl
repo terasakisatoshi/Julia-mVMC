@@ -18,6 +18,7 @@ using Base.Threads
 include("ordinary_real_factor.jl")
 include("ordinary_real_inverse.jl")
 include("ordinary_complex_inverse.jl")
+include("ordinary_complex_factor.jl")
 
 """
     calculate_m_all_child_fcmp!(
@@ -175,8 +176,8 @@ function calculate_m_all_child_fcmp!(
 
     # LTL decomposition (upper triangular)
     # M_ZSKTRF("U", "P", &n, invM, &lda, iwork, bufM, &nsq, &info)
-    # Use julia_zsktf2_turbo! for optimized SIMD vectorization (faster than Fortran for n >= 128)
-    info = julia_zsktf2_turbo!(inv_m, iwork)
+    # Ordinary C upper/normal factor: IZAMAX, native quotient and ZSKR2 order.
+    info = _ordinary_zsktf2_c_order!(inv_m, iwork)
     if info != 0
         return info
     end
