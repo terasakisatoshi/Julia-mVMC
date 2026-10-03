@@ -82,6 +82,7 @@ end
     include("../test_unit/test_unit_physcal_factored_green.jl")
     include("../test_unit/test_unit_fsz_native_contract.jl")
     include("../test_unit/test_unit_ordinary_real_rank2.jl")
+    include("../test_unit/test_unit_ordinary_real_inverse.jl")
     include("../test_unit/test_unit_read_opt_para.jl")
     include("../test_unit/test_unit_run_phys_cal_runner.jl")
 end

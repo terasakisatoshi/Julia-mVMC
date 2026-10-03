@@ -16,6 +16,7 @@ using PfaPack: julia_zsktf2!, julia_dsktf2!, julia_zsktf2_turbo!
 using Base.Threads
 
 include("ordinary_real_factor.jl")
+include("ordinary_real_inverse.jl")
 
 """
     calculate_m_all_child_fcmp!(
@@ -631,7 +632,7 @@ function calculate_m_all_child_real!(
     pf_m[] = pfaff
 
     # Calculate inverse matrix using utu2inv! on the LTL-decomposed matrix
-    utu2inv!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
+    _ordinary_utu2inv_real_c_order!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
 
     # C implementation applies M_DSCAL(&nsq, &minus_one, invM, &one)
     # InvM -> InvM' = -InvM
