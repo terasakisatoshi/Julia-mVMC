@@ -683,11 +683,12 @@ function parse_file_by_type!(data::ExpertModeData, file_type::String, file_path:
                         if length(tokens) >= 2
                             idx = safe_parse_int(tokens[1], -1)
                             value = safe_parse_float(tokens[2])
+                            imaginary = length(tokens) >= 3 ? safe_parse_float(tokens[3]) : 0.0
                             if idx >= 0
                                 while length(para_qp_trans) <= idx
                                     push!(para_qp_trans, ComplexF64(0.0))
                                 end
-                                para_qp_trans[idx+1] = ComplexF64(value)
+                                para_qp_trans[idx+1] = ComplexF64(value, imaginary)
                             end
                             line_idx += 1
                             break
