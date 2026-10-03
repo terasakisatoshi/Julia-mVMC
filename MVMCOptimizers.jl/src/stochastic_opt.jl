@@ -883,9 +883,8 @@ function stochastic_opt_cg_main!(
 
         # alpha = delta / (d^T * q)
         dq = xdot(ws.d, ws.q)
-        if abs(dq) < 1e-30
-            break
-        end
+        # C stcopt_cg_impl.c:310 divides every nonzero denominator, even for
+        # well-conditioned scaled SPD systems below an absolute cutoff.
         alpha = delta / dq
 
         # Update solution: x = x + alpha * d
@@ -917,11 +916,11 @@ function stochastic_opt_cg_main!(
         end
 
         # beta = (r_new^T * r_new) / delta
-        delta_new = xdot(ws.r, ws.r)
-        beta = delta_new / delta
+        beta = xdot(ws.r, ws.r) / delta
 
         # Update delta
-        delta = delta_new
+        # Preserve C:336 multiply-back recurrence (not direct norm assignment).
+        delta = beta * delta
 
         # Update search direction: d = r + beta * d
         for si = 1:n_smat
