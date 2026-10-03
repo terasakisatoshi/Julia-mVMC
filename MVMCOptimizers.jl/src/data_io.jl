@@ -119,15 +119,11 @@ function output_data!(data::ExpertModeData, state::VMCOptimizationState, step::I
             imag(etot2)
         )
 
-        # Output parameters (Gutzwiller, Jastrow, Orbital)
-        for term in data.gutzwiller_terms
-            @printf(f, "% .18e % .18e 0.0 ", real(term.value), imag(term.value))
-        end
-        for term in data.jastrow_terms
-            @printf(f, "% .18e % .18e 0.0 ", real(term.value), imag(term.value))
-        end
-        for term in data.orbital_terms
-            @printf(f, "% .18e % .18e 0.0 ", real(term.value), imag(term.value))
+        # C vmcmain.c:655–657 writes every Para[0:NPara-1] slot:
+        # projection (including DH2/DH4), RBM, declared Slater, OptTrans.
+        # Mapped orbital rows may repeat an index; they are not extra Para.
+        for parameter in pack_parameters(data)
+            @printf(f, "% .18e % .18e 0.0 ", real(parameter), imag(parameter))
         end
         @printf(f, "\n")
     end

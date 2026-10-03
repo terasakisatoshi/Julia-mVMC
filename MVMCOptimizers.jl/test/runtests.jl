@@ -70,6 +70,7 @@ end
     include("../test_unit/test_unit_normal_interall.jl")
     include("../test_unit/test_unit_parameter_sync.jl")
     include("../test_unit/test_unit_types.jl")
+    include("../test_unit/test_unit_data_io_full_var.jl")
     include("../test_unit/test_unit_threading.jl")
     include("../test_unit/test_unit_parallel.jl")
     include("../test_unit/test_unit_weight_average.jl")
