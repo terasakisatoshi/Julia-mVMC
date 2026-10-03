@@ -251,6 +251,7 @@ Files are optional: missing `In*.def` entries (or files referenced by
 `namelist.def` but absent on disk) are silently skipped.
 """
 function read_input_parameters!(data::ExpertModeData, namelist_path::String)
+    gather_retained_parameters!(data)
     base_dir = dirname(abspath(namelist_path))
 
     # Read namelist.def to get file list
@@ -259,6 +260,7 @@ function read_input_parameters!(data::ExpertModeData, namelist_path::String)
 
     # Process InGutzwiller.def
     for (file_type, file_path) in file_list
+        params = nothing
         if file_type == "InGutzwiller"
             full_path = joinpath(base_dir, file_path)
             if validate_file_exists(full_path)
@@ -389,8 +391,10 @@ function read_input_parameters!(data::ExpertModeData, namelist_path::String)
                 end
             end
         end
+        params === nothing || retain_input_overlay!(data, file_type, params)
     end
 
+    gather_retained_parameters!(data)
     return data
 end
 

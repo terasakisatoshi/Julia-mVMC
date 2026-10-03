@@ -31,6 +31,7 @@ This function:
 """
 function init_parameter!(data::ExpertModeData; rng::AbstractRNG = SFMT19937RNG())
     modpara = data.modpara
+    empty!(data.retained_parameters)
 
     # Note: Do NOT re-seed the RNG here!
     # The RNG should be seeded by the caller (e.g., vmc_para_opt!) before calling this function.
@@ -138,7 +139,8 @@ function init_parameter!(data::ExpertModeData; rng::AbstractRNG = SFMT19937RNG()
 
         # Scatter RBM values by (section_offset + local idx), matching C RBM layout.
         section_offset = 0
-        for (terms, n_section) in zip(rbm_sections, rbm_section_sizes)
+        for (name, terms, n_section) in zip(RETAINED_RBM_FAMILIES, rbm_sections, rbm_section_sizes)
+            copyto!(retained_family!(data, name, n_section), 1, rbm_values, section_offset + 1, n_section)
             for term in terms
                 local_idx = term.idx
                 if 0 <= local_idx < n_section
@@ -168,12 +170,7 @@ function init_parameter!(data::ExpertModeData; rng::AbstractRNG = SFMT19937RNG()
     # Since MVMCExpertModeParsers.jl now pre-offsets parallel orbital indices,
     # we can simply find the maximum idx across all orbital_terms.
     # For Kitaev FSZ: indices range from 0 to 275, so n_slater = 276.
-    n_slater = 0
-    if !isempty(data.orbital_terms)
-        n_slater = maximum(t.idx for t in data.orbital_terms) + 1
-    elseif modpara.n_orbital_idx > 0
-        n_slater = modpara.n_orbital_idx
-    end
+    n_slater = count_orbital_parameters(data)
 
     # First, generate Slater values for each unique idx (matching C's loop over NSlater)
     slater_values = Vector{ComplexF64}(undef, n_slater)
@@ -227,6 +224,7 @@ function init_parameter!(data::ExpertModeData; rng::AbstractRNG = SFMT19937RNG()
     end
 
     # Now, apply Slater values to all orbital_terms based on their idx
+    copyto!(retained_family!(data, :slater, n_slater), slater_values)
     # Since indices are pre-offset in MVMCExpertModeParsers.jl, use term.idx directly
     for term in data.orbital_terms
         idx = term.idx
@@ -262,10 +260,12 @@ This function:
 - Ensures max(|Slater[i]|) <= D_AMP_MAX
 """
 function sync_modified_parameter!(data::ExpertModeData)
+    gather_retained_parameters!(data)
+    slater = retained_family!(data, :slater, count_orbital_parameters(data))
     # Find maximum absolute value of Slater parameters
     xmax = 0.0
-    for term in data.orbital_terms
-        abs_val = abs(term.value)
+    for value in slater
+        abs_val = abs(value)
         if abs_val > xmax
             xmax = abs_val
         end
@@ -276,11 +276,12 @@ function sync_modified_parameter!(data::ExpertModeData)
     # これにより、xmax < D_AMP_MAX の場合でもスケーリングされる
     if xmax > 0.0
         ratio = D_AMP_MAX / xmax
-        for term in data.orbital_terms
-            term.value *= ratio
+        for i in eachindex(slater)
+            slater[i] *= ratio
         end
     end
 
+    scatter_retained_parameters!(data)
     return data
 end
 

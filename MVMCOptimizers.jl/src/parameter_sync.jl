@@ -89,64 +89,69 @@ This function:
 """
 function sync_modified_parameter!(data::ExpertModeData; shift_correlations::Bool = true)
     layout = MVMCExpertModeParsers.projection_layout(data)
+    MVMCExpertModeParsers.gather_retained_parameters!(data)
+    gutz = MVMCExpertModeParsers.retained_family!(data, :gutzwiller, layout.n_gutzwiller)
+    jast = MVMCExpertModeParsers.retained_family!(data, :jastrow, layout.n_jastrow)
 
     if shift_correlations
         g_shift = 0.0
         flag_shift_dh2(data, layout) && (g_shift += shift_dh2!(data, layout))
         flag_shift_dh4(data, layout) && (g_shift += shift_dh4!(data, layout))
         if g_shift != 0.0
-            for term in data.gutzwiller_terms
-                term.value += g_shift
+            for i in eachindex(gutz)
+                gutz[i] += g_shift
             end
         end
 
         # Shift Gutzwiller/Jastrow if all are optimized (C: FlagShiftGJ / shiftGJ)
-        n_gutz = length(data.gutzwiller_terms)
-        n_jast = length(data.jastrow_terms)
+        n_gutz = layout.n_gutzwiller
+        n_jast = layout.n_jastrow
         flag_shift_gj = false
         if n_gutz > 0 && n_jast > 0
             if isempty(data.optimization_flags)
                 # Default: treat all parameters as optimized
                 flag_shift_gj = true
             else
-                all_gutz = all(i -> is_gutzwiller_optimized(data, i), 1:n_gutz)
-                all_jast = all(i -> is_jastrow_optimized(data, i), 1:n_jast)
+                all_gutz = all(i -> _real_opt_flag(data, layout.gutzwiller_offset + i - 1), 1:n_gutz)
+                all_jast = all(i -> _real_opt_flag(data, layout.jastrow_offset + i - 1), 1:n_jast)
                 flag_shift_gj = all_gutz && all_jast
             end
         end
         if flag_shift_gj
             shift = 0.0
             n_all = n_gutz + n_jast
-            for term in data.gutzwiller_terms
-                shift += real(term.value)
+            for value in gutz
+                shift += real(value)
             end
-            for term in data.jastrow_terms
-                shift += real(term.value)
+            for value in jast
+                shift += real(value)
             end
             if n_all > 0
                 shift /= n_all
-                for term in data.gutzwiller_terms
-                    term.value -= shift
+                for i in eachindex(gutz)
+                    gutz[i] -= shift
                 end
-                for term in data.jastrow_terms
-                    term.value -= shift
+                for i in eachindex(jast)
+                    jast[i] -= shift
                 end
             end
         end
     end
 
     # Rescale Slater parameters (C: D_AmpMax/xmax)
+    slater = MVMCExpertModeParsers.retained_family!(data, :slater,
+        MVMCExpertModeParsers.count_orbital_parameters(data))
     xmax = 0.0
-    for term in data.orbital_terms
-        abs_val = abs(term.value)
+    for value in slater
+        abs_val = abs(value)
         if abs_val > xmax
             xmax = abs_val
         end
     end
     if xmax > 0.0
         ratio = D_AMP_MAX / xmax
-        for term in data.orbital_terms
-            term.value *= ratio
+        for i in eachindex(slater)
+            slater[i] *= ratio
         end
     end
 
@@ -161,6 +166,12 @@ function sync_modified_parameter!(data::ExpertModeData; shift_correlations::Bool
         end
     end
 
+    # Dense DH/OptTrans arrays were modified above; gather only these families
+    # before scattering, so stale mapped projection/Slater terms cannot undo SR.
+    MVMCExpertModeParsers.retain_dense_prefix!(data, :dh2, data.doublon_holon_2site_params)
+    MVMCExpertModeParsers.retain_dense_prefix!(data, :dh4, data.doublon_holon_4site_params)
+    MVMCExpertModeParsers.retain_dense_prefix!(data, :opttrans, data.opt_trans)
+    MVMCExpertModeParsers.scatter_retained_parameters!(data)
     return 0
 end
 
@@ -225,10 +236,11 @@ end
 "C の contiguous `Para` 相当へ pack（spec §5-2 の pack/unpack helper）。"
 function pack_parameters(data::ExpertModeData)
     counts = _parameter_count_breakdown(data)
-    para = zeros(ComplexF64, counts.n_para)
+    para = MVMCExpertModeParsers.retained_flat_parameters!(data)
     _foreach_parameter_location(data, counts) do para_idx, loc
         para[para_idx] = _parameter_location_value(data, loc)
     end
+    MVMCExpertModeParsers.retain_flat_parameters!(data, para)
     return para
 end
 
@@ -237,6 +249,7 @@ function unpack_parameters!(data::ExpertModeData, para::AbstractVector{ComplexF6
     n = counts.n_para
     length(para) == n || throw(ArgumentError(
         "parameter vector length $(length(para)) != NPara $n"))
+    MVMCExpertModeParsers.retain_flat_parameters!(data, para)
     touched_opt_trans = Ref(false)
     _foreach_parameter_location(data, counts) do para_idx, loc
         _set_parameter_location_value!(data, loc, para[para_idx])

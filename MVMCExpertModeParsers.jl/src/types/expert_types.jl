@@ -792,6 +792,10 @@ mutable struct ExpertModeData
     # orbital block begins, mirroring readdef.c (Slater[iNOrbitalAntiParallel + idx]).
     n_orbital_anti_parallel::Int
 
+    # Declared C Para slots without a mapped term must survive SR and file loads.
+    # Each family is independently invalidated when its declared width changes.
+    retained_parameters::Dict{Symbol,Vector{ComplexF64}}
+
     function ExpertModeData()
         new(
             ModParaParameters(),
@@ -851,6 +855,7 @@ mutable struct ExpertModeData
             0,
             0,  # i_flg_orbital_general, i_flg_orbital_anti_parallel, i_flg_orbital_parallel (default: 0)
             0,  # n_orbital_anti_parallel (NArrayAP, default: 0)
+            Dict{Symbol,Vector{ComplexF64}}(),
         )
     end
 end
