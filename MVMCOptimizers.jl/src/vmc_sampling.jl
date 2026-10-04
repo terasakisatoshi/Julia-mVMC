@@ -2931,6 +2931,7 @@ function vmc_make_sample!(
 
             elseif update_type == EXCHANGE
                 # Exchange update: two electrons exchange positions
+                state.electron_config.counter[3] += 1
 
                 # [31] make candidate (closed before the reject/`s==t` continues)
                 ctimer_start!(c_timer, 31)
@@ -3089,6 +3090,7 @@ function vmc_make_sample!(
                         copy!(rbm_cnt_old, rbm_cnt_new)
                     end
                     n_accept += 1
+                    state.electron_config.counter[4] += 1
                 else
                     # Reject: revert electron configuration
                     revert_ele_config!(
@@ -6194,6 +6196,7 @@ function vmc_make_sample_real!(
             elseif update_type == EXCHANGE
                 # Exchange update: two electrons exchange positions
                 # Uses O(N²) Sherman-Morrison update instead of O(N³) full recalculation
+                state.electron_config.counter[3] += 1
 
                 # [31] make candidate (closed before the reject `continue`)
                 ctimer_start!(c_timer, 31)
@@ -6314,6 +6317,7 @@ function vmc_make_sample_real!(
                     tmp_ele_proj_cnt .= proj_cnt_new
                     log_ip_old = log_ip_new
                     n_accept += 1
+                    state.electron_config.counter[4] += 1
                 else
                     # Reject: just revert electron configuration (no matrix update needed!)
                     revert_ele_config!(
