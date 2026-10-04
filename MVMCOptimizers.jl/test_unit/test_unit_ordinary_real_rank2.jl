@@ -14,7 +14,9 @@ using Test, MVMCOptimizers, PfaPack
     end
     original = copy(A)
     ipiv = zeros(Int, 4)
-    @test PfaPack.julia_dsktf2!(copy(A), copy(ipiv)) == 1 # old grouping loses pivot
+    # The former INFO1 negative control exposed the dependency's grouped update.
+    # Its C-left association repair must now retain the native successful pivot.
+    @test PfaPack.julia_dsktf2!(copy(A), copy(ipiv)) == 0
     @test MVMCOptimizers._ordinary_dsktf2_c_order!(A, ipiv) == 0
     pf = PfaPack.utu2pfa(4, A, 4, ipiv)
     # Two dyadic factor products plus pivot sign: reviewed native 4EPS policy.
