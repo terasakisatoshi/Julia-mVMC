@@ -26,6 +26,10 @@ C implementation: vmcmain.c:VMCPhysCal()
   matching `run_phys_cal_from_namelist` as of v0.4.
   When a non-`nothing` RNG is passed in, it is used **as-is**; the
   caller is responsible for seeding it.
+- `c_timer::Union{CTimer,Nothing}`: optional C-compatible section timer. When
+  `nothing` (default) all `ctimer_*` calls are no-ops and the numerical path is
+  unchanged. `run_phys_cal_from_namelist` passes a `CTimer` built from
+  `MVMC_C_TIMER`; it relies on the caller to write the report file.
 
 # Returns
 - `info::Int`: Return code (0 = success, non-zero = error)
@@ -44,7 +48,14 @@ function vmc_phys_cal!(
     rng::Union{AbstractRNG,Nothing} = nothing,
     output_dir::Union{String,Nothing} = nothing,
     ctx::ParallelContext = serial_context(),
+    c_timer::Union{CTimer,Nothing} = nothing,
 )::Int
+    # C-compatible section timer. `nothing` -> disabled singleton (no-op
+    # dispatch); a concretely typed CTimer flows in from
+    # `run_phys_cal_from_namelist` through this function barrier, after which the
+    # per-sample ctimer_* calls specialise on its type.
+    timer = c_timer === nothing ? CTIMER_DISABLED : c_timer
+
     # Reject unsupported global / PhysCal combinations before any work.
     validate_supported_modpara(data.modpara)
     validate_supported_phys_cal_modpara(data.modpara)
@@ -158,11 +169,13 @@ function vmc_phys_cal!(
 
     # Update Slater matrix elements
     # C: UpdateSlaterElm_fcmp() is called at the start of VMCPhysCal()
+    ctimer_start!(timer, 20)
     if i_flg_orbital_general == 0
         update_slater_elm_fcmp!(data, state)
     else
         update_slater_elm_fsz!(data, state)
     end
+    ctimer_stop!(timer, 20)
 
     # Note: C's VMCPhysCal does NOT call UpdateQPWeight() (unlike VMCParaOpt)
     # The QP weights are already initialized above
@@ -180,7 +193,9 @@ function vmc_phys_cal!(
         # Initialize output files
         init_file_phys_cal!(data, ismp)
 
-        # VMC Sampling
+        # VMC Sampling. C wraps the real Slater copies and the sampling call in
+        # StartTimer(3)/StopTimer(3) (vmcmain.c:551-602).
+        ctimer_start!(timer, 3)
         if !all_complex  # real
             # CRITICAL: Copy SlaterElm to SlaterElm_real BEFORE VMCMakeSample_real
             # C: for(tmp_i=0;tmp_i<NQPFull*(2*Nsite)*(2*Nsite);tmp_i++) SlaterElm_real[tmp_i]= creal(SlaterElm[tmp_i]);
@@ -214,50 +229,58 @@ function vmc_phys_cal!(
 
             if i_flg_orbital_general == 0
                 if n_proj_bf == 0
-                    vmc_make_sample_real!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                    vmc_make_sample_real!(data, state, rng, timer; ctx = ctx)
                 else
                     vmc_bf_make_sample_real!(data, state, rng)
                 end
             else
-                vmc_make_sample_fsz_real!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                vmc_make_sample_fsz_real!(data, state, rng, timer; ctx = ctx)
             end
         else  # complex
             if n_proj_bf == 0
                 if i_flg_orbital_general == 0
-                    vmc_make_sample!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                    vmc_make_sample!(data, state, rng, timer; ctx = ctx)
                 else
-                    vmc_make_sample_fsz!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                    vmc_make_sample_fsz!(data, state, rng, timer; ctx = ctx)
                 end
             else
                 vmc_bf_make_sample!(data, state, rng)
             end
         end
+        ctimer_stop!(timer, 3)
 
         # Main calculation (energy + Green's functions)
+        ctimer_start!(timer, 4)
         if n_proj_bf == 0
             if i_flg_orbital_general == 0
-                vmc_main_cal!(data, state, CTIMER_DISABLED, ctx)  # Will calculate Green's functions if mode=1
+                vmc_main_cal!(data, state, timer, ctx)  # Will calculate Green's functions if mode=1
             else
-                vmc_main_cal_fsz!(data, state, CTIMER_DISABLED, ctx)
+                vmc_main_cal_fsz!(data, state, timer, ctx)
             end
         else
             vmc_bf_main_cal!(data, state)
         end
+        ctimer_stop!(timer, 4)
 
-        # Weighted averages
+        # Weighted averages (C StartTimer(21)/StopTimer(21) spans WE, the Green
+        # average and ReduceCounter; vmcmain.c:618-624).
+        ctimer_start!(timer, 21)
         weight_average_we!(ctx, state)
         weight_average_green_func!(ctx, state)
 
         # Reduce counters (C ReduceCounter(comm_child2); serial is no-op)
         reduce_counter!(ctx, state)
+        ctimer_stop!(timer, 21)
 
         # Output data. Pass the 0-based sample counter; output_data_phys! drives
         # the energy/param write mode from it (first sample truncates) and numbers
         # the Green files with ismp + NDataIdxStart internally.
+        ctimer_start!(timer, 22)
         is_output_rank(ctx) && output_data_phys!(data, state, ismp; output_dir = output_dir)
 
         # Close files
         is_output_rank(ctx) && close_file_phys_cal!(data, ismp)
+        ctimer_stop!(timer, 22)
 
         # Callback
         if callback !== nothing

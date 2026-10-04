@@ -88,6 +88,7 @@ end
     include("../test_unit/test_unit_ordinary_complex_factor.jl")
     include("../test_unit/test_unit_read_opt_para.jl")
     include("../test_unit/test_unit_run_phys_cal_runner.jl")
+    include("../test_unit/test_unit_phys_cal_timer.jl")
 end
 
 # Integration tests against the C reference live at the workspace root
