@@ -15,6 +15,11 @@ using PfaPack: cimpl_utu2inv!, utu2pfa, utu2inv!
 using PfaPack: julia_zsktf2!, julia_dsktf2!, julia_zsktf2_turbo!
 using Base.Threads
 
+include("ordinary_real_factor.jl")
+include("ordinary_real_inverse.jl")
+include("ordinary_complex_inverse.jl")
+include("ordinary_complex_factor.jl")
+
 """
     calculate_m_all_child_fcmp!(
         ele_idx::Vector{Int},
@@ -171,8 +176,8 @@ function calculate_m_all_child_fcmp!(
 
     # LTL decomposition (upper triangular)
     # M_ZSKTRF("U", "P", &n, invM, &lda, iwork, bufM, &nsq, &info)
-    # Use julia_zsktf2_turbo! for optimized SIMD vectorization (faster than Fortran for n >= 128)
-    info = julia_zsktf2_turbo!(inv_m, iwork)
+    # Ordinary C upper/normal factor: IZAMAX, native quotient and ZSKR2 order.
+    info = _ordinary_zsktf2_c_order!(inv_m, iwork)
     if info != 0
         return info
     end
@@ -199,7 +204,7 @@ function calculate_m_all_child_fcmp!(
 
     # Copy LTL-decomposed matrix back to inv_m (it was already modified by julia_zsktf2_turbo!)
     # buf_m already has the LTL result, but we'll use inv_m directly
-    utu2inv!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
+    _ordinary_utu2inv_complex_c_order!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
     #cimpl_utu2inv!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
 
     # C implementation applies M_ZSCAL(&nsq, &minus_one, invM, &one) for row-major
@@ -609,8 +614,8 @@ function calculate_m_all_child_real!(
 
     # LTL decomposition (upper triangular)
     # M_DSKTRF("U", "N", &n, invM, &lda, iwork, bufM, &nsq, &info)
-    # Use optimized Julia DSKTF2 (same performance as Fortran)
-    info = julia_dsktf2!(inv_m, iwork)
+    # Private scalar DSKTF2 preserves the C rank-2 operation order.
+    info = _ordinary_dsktf2_c_order!(inv_m, iwork)
     if info != 0
         return info
     end
@@ -629,7 +634,7 @@ function calculate_m_all_child_real!(
     pf_m[] = pfaff
 
     # Calculate inverse matrix using utu2inv! on the LTL-decomposed matrix
-    utu2inv!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
+    _ordinary_utu2inv_real_c_order!(n_size, inv_m, n_size, iwork, v_t, m_work, n_size)
 
     # C implementation applies M_DSCAL(&nsq, &minus_one, invM, &one)
     # InvM -> InvM' = -InvM

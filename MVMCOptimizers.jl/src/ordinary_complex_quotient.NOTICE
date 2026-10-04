@@ -1,0 +1,13 @@
+ordinary_complex_quotient.jl contains private Julia translations of:
+GNU GCC13.3.0 libgcc/libgcc2.c L_divdc3, Copyright(C)1989-2023 Free Software
+Foundation, GPL-3.0-or-later WITH GCC-exception-3.1; and LLVM17.0.6
+compiler-rt/lib/builtins/divdc3.c, Apache-2.0 WITH LLVM-exception.
+The original archival source and notices are retained in static fixture origin
+files, not executed by tests. Full licenses are adjacent to this source.
+GNU whole-source SHA97d364b0d74d6bf073eb3829ab12884ce243c68af8f7601d84baade12ee15599.
+This port also follows the reviewed pure-Rust operational translation in
+mvmc-rs c_complex_gnu.rs/c_complex.rs (not misattributed as native C source).
+That validation bridge supplied binary scaling and observed macOS ARM FMA
+selection; it is not a Julia/native full-sampler authority claim.
+Linux+glibc selects GNU; other host libc/platforms select LLVM; macOS aarch64
+selects LLVM FMA, others separate products and sums. No new FFI or globals.

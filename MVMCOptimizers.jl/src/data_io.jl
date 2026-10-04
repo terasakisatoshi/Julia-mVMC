@@ -12,36 +12,15 @@ using Printf
 Store optimization data for averaging.
 Equivalent to C's `StoreOptData()`.
 
-Stores energy and parameters for later averaging.
+Stores measured pre-SR energy/E² and synchronized post-SR parameters.
 """
 function store_opt_data!(data::ExpertModeData, state::VMCOptimizationState, sample_idx::Int)
-    # Collect current parameters
-    parameters = ComplexF64[]
-
-    # Add Gutzwiller parameters
-    for term in data.gutzwiller_terms
-        push!(parameters, term.value)
-    end
-
-    # Add Jastrow parameters
-    for term in data.jastrow_terms
-        push!(parameters, term.value)
-    end
-
-    # Add Orbital parameters
-    for term in data.orbital_terms
-        push!(parameters, term.value)
-    end
-
-    # Store data point
-    opt_point = OptDataPoint(state.energy.etot, parameters)
-
-    # Ensure we have enough space
-    while length(state.opt_data) <= sample_idx
-        push!(state.opt_data, OptDataPoint(0.0 + 0.0im, ComplexF64[]))
-    end
-
-    state.opt_data[sample_idx+1] = opt_point
+    sample_idx == length(state.opt_data) ||
+        throw(ArgumentError("optimization window must be stored chronologically"))
+    # C avevar.c:82–89: unique contiguous Para, not expanded site-pair rows.
+    # Own the snapshot: subsequent synchronization must not mutate history.
+    push!(state.opt_data, OptDataPoint(state.energy.etot, state.energy.etot2,
+        copy(pack_parameters(data))))
 end
 
 # Helper: return path, creating output_dir if given
@@ -119,102 +98,109 @@ function output_data!(data::ExpertModeData, state::VMCOptimizationState, step::I
             imag(etot2)
         )
 
-        # Output parameters (Gutzwiller, Jastrow, Orbital)
-        for term in data.gutzwiller_terms
-            @printf(f, "% .18e % .18e 0.0 ", real(term.value), imag(term.value))
-        end
-        for term in data.jastrow_terms
-            @printf(f, "% .18e % .18e 0.0 ", real(term.value), imag(term.value))
-        end
-        for term in data.orbital_terms
-            @printf(f, "% .18e % .18e 0.0 ", real(term.value), imag(term.value))
+        # C vmcmain.c:655–657 writes every Para[0:NPara-1] slot:
+        # projection (including DH2/DH4), RBM, declared Slater, OptTrans.
+        # Mapped orbital rows may repeat an index; they are not extra Para.
+        for parameter in pack_parameters(data)
+            @printf(f, "% .18e % .18e 0.0 ", real(parameter), imag(parameter))
         end
         @printf(f, "\n")
     end
 end
 
 """
-    output_opt_data!(data::ExpertModeData; output_dir=nothing)
+    output_opt_data!(data, state; output_dir=nothing)
 
-Output optimized parameters.
-Equivalent to C's `OutputOptData()`.
-
-Outputs to zqp_opt.dat and individual parameter files.
-If `output_dir` is set, files are written under that directory (directory is created if needed).
+C avevar.c OutputOptData: measured E/E² plus unique post-SR Para history.
+A one-sample window writes real/zero pairs; larger windows write complex
+means and sample deviations. Validate the entire window before opening files.
 """
-function output_opt_data!(data::ExpertModeData; output_dir::Union{String,Nothing}=nothing)
-    # Get file head from parameters
-    para_file_head = data.modpara.c_para_file_head
-    if isempty(para_file_head)
-        para_file_head = "zqp"
+function output_opt_data!(data::ExpertModeData, state::VMCOptimizationState;
+    output_dir::Union{String,Nothing}=nothing)
+    counts = _parameter_count_breakdown(data)
+    history = state.opt_data
+    length(history) == data.modpara.nsr_opt_itr_smp > 0 ||
+        throw(ArgumentError("incomplete optimization window"))
+    all(point -> length(point.parameters) == counts.n_para, history) ||
+        throw(ArgumentError("optimization window parameter shape mismatch"))
+    rows = [vcat(ComplexF64[point.energy, point.energy_squared], point.parameters)
+            for point in history]
+    head = isempty(data.modpara.c_para_file_head) ? "zqp" : data.modpara.c_para_file_head
+    # Family ranges follow the same C layout as pack_parameters.
+    layout = counts.layout
+    families = Tuple{String,String,Int,Int}[
+        ("gutzwiller", "NGutzwillerIdx", layout.n_gutzwiller, layout.n_gutzwiller),
+        ("jastrow", "NJastrowIdx", layout.n_jastrow, layout.n_jastrow),
+        ("doublonHolon2site", "NDoublonHolon2siteIdx", layout.n_dh2, 6 * layout.n_dh2),
+        ("doublonHolon4site", "NDoublonHolon4siteIdx", layout.n_dh4, 10 * layout.n_dh4),
+    ]
+    names = ("chargeRBM_physlayer", "spinRBM_physlayer", "generalRBM_physlayer",
+        "chargeRBM_hiddenlayer", "spinRBM_hiddenlayer", "generalRBM_hiddenlayer",
+        "chargeRBM_physhidden", "spinRBM_physhidden", "generalRBM_physhidden")
+    headers = ("NChargeRBM_PhysLayerIdx", "NSpinRBM_PhysLayerIdx", "NGeneralRBM_PhysLayerIdx",
+        "NChargeRBM_HiddenLayerIdx", "NSpinRBM_HiddenLayerIdx", "NGeneralRBM_HiddenLayerIdx",
+        "NChargeRBM_PhysHiddenIdx", "NSpinRBM_PhysHiddenIdx", "NGeneralRBM_PhysHiddenIdx")
+    for (name, header, terms) in zip(names, headers, _rbm_parameter_sections(data))
+        width = _parameter_section_width(terms)
+        push!(families, (name, header, width, width))
     end
-
-    # Output to zqp_opt.dat
-    opt_file = _output_path(para_file_head * "_opt.dat", output_dir)
-    open(opt_file, "w") do f
-        # Output Gutzwiller parameters
-        if !isempty(data.gutzwiller_terms)
-            for (i, term) in enumerate(data.gutzwiller_terms)
-                @printf(f, "% .18e % .18e \n", real(term.value), imag(term.value))
-            end
-        end
-
-        # Output Jastrow parameters
-        if !isempty(data.jastrow_terms)
-            for (i, term) in enumerate(data.jastrow_terms)
-                @printf(f, "% .18e % .18e \n", real(term.value), imag(term.value))
-            end
-        end
-
-        # Output Orbital (Slater) parameters
-        if !isempty(data.orbital_terms)
-            for (i, term) in enumerate(data.orbital_terms)
-                @printf(f, "% .18e % .18e \n", real(term.value), imag(term.value))
-            end
-        end
+    if data.i_flg_orbital_general == 0
+        push!(families, ("orbital", "NOrbitalIdx", counts.n_orbital_idx, counts.n_orbital_idx))
+    elseif data.i_flg_orbital_parallel != 0
+        anti = data.n_orbital_anti_parallel
+        parallel = counts.n_orbital_idx - anti
+        0 <= anti <= counts.n_orbital_idx && parallel > 0 && iseven(parallel) ||
+            throw(ArgumentError("invalid AntiParallel + 2*Parallel parameter layout"))
+        push!(families, ("orbitalAntiParallel", "NOrbitalAntiParallelIdx", anti, anti))
+        push!(families, ("orbitalParallel", "NOrbitalParallelIdx", parallel, parallel))
+    else
+        push!(families, ("orbital_general", "NOrbitalIdx", counts.n_orbital_idx, counts.n_orbital_idx))
     end
-
-    # Output individual parameter files (optional, for detailed analysis)
-    # Gutzwiller
-    if !isempty(data.gutzwiller_terms)
-        gutz_file = _output_path(para_file_head * "_gutzwiller_opt.dat", output_dir)
-        open(gutz_file, "w") do f
-            println(f, "===============================")
-            println(f, "NGutzwillerIdx $(length(data.gutzwiller_terms))")
-            println(f, "===============================")
-            println(f, "===============================")
-            for (i, term) in enumerate(data.gutzwiller_terms)
-                @printf(f, "%d % .18e % .18e \n", i-1, real(term.value), imag(term.value))
+    push!(families, ("trans", "NQPOptTrans", counts.n_opt_trans, counts.n_opt_trans))
+    sum(family[4] for family in families) == counts.n_para ||
+        throw(ArgumentError("optimization output family layout mismatch"))
+    open(_output_path(head * "_opt.dat", output_dir), "w") do root
+        if length(rows) == 1
+            for value in rows[1]
+                @printf(root, "% .18e % .18e ", real(value), 0.0)
+            end
+        else
+            # C CalcAveVar: chronological sums; denominator is n-1, not n.
+            statistics = map(eachindex(rows[1])) do index
+                mean = 0.0 + 0.0im
+                for row in rows
+                    mean += row[index]
+                end
+                mean /= length(rows)
+                variance = 0.0
+                for row in rows
+                    delta = row[index] - mean
+                    variance += real(delta * conj(delta))
+                end
+                (mean, sqrt(variance / (length(rows) - 1)))
+            end
+            for (mean, deviation) in statistics[1:2]
+                @printf(root, "% .18e % .18e % .18e ", real(mean), imag(mean), deviation)
+            end
+            offset = 2
+            for (name, header, header_count, width) in families
+                width == 0 && continue
+                open(_output_path(head * "_" * name * "_opt.dat", output_dir), "w") do child
+                    println(child, "======================")
+                    println(child, header, "  ", header_count)
+                    for _ in 1:3
+                        println(child, "======================")
+                    end
+                    for index in 1:width
+                        mean, deviation = statistics[offset + index]
+                        @printf(child, "%d % .18e % .18e \n", index - 1, real(mean), imag(mean))
+                        @printf(root, "% .18e % .18e % .18e ", real(mean), imag(mean), deviation)
+                    end
+                end
+                offset += width
             end
         end
-    end
-
-    # Jastrow
-    if !isempty(data.jastrow_terms)
-        jast_file = _output_path(para_file_head * "_jastrow_opt.dat", output_dir)
-        open(jast_file, "w") do f
-            println(f, "===============================")
-            println(f, "NJastrowIdx $(length(data.jastrow_terms))")
-            println(f, "===============================")
-            println(f, "===============================")
-            for (i, term) in enumerate(data.jastrow_terms)
-                @printf(f, "%d % .18e % .18e \n", i-1, real(term.value), imag(term.value))
-            end
-        end
-    end
-
-    # Orbital (Slater)
-    if !isempty(data.orbital_terms)
-        orb_file = _output_path(para_file_head * "_orbital_opt.dat", output_dir)
-        open(orb_file, "w") do f
-            println(f, "===============================")
-            println(f, "NOrbitalIdx $(length(data.orbital_terms))")
-            println(f, "===============================")
-            println(f, "===============================")
-            for (i, term) in enumerate(data.orbital_terms)
-                @printf(f, "%d % .18e % .18e \n", i-1, real(term.value), imag(term.value))
-            end
-        end
+        println(root)
     end
 end
 

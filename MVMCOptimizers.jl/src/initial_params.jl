@@ -91,56 +91,8 @@ function _load_para_triples!(data::ExpertModeData, text::AbstractString)
     end
 
     # ── Commit phase: validation passed, now mutate `data`. ──────────────
-    idx = 7  # skip 6 leading floats (1-based: start at index 7)
-    @inbounds for i = 1:layout.n_gutzwiller
-        if i <= length(data.gutzwiller_terms)
-            data.gutzwiller_terms[i].value = ComplexF64(values[idx], values[idx+1])
-        end
-        idx += 3
-    end
-    @inbounds for i = 1:layout.n_jastrow
-        if i <= length(data.jastrow_terms)
-            data.jastrow_terms[i].value = ComplexF64(values[idx], values[idx+1])
-        end
-        idx += 3
-    end
-    @inbounds for i = 1:(6 * layout.n_dh2)
-        if i <= length(data.doublon_holon_2site_params)
-            data.doublon_holon_2site_params[i] = ComplexF64(values[idx], values[idx+1])
-        end
-        idx += 3
-    end
-    @inbounds for i = 1:(10 * layout.n_dh4)
-        if i <= length(data.doublon_holon_4site_params)
-            data.doublon_holon_4site_params[i] = ComplexF64(values[idx], values[idx+1])
-        end
-        idx += 3
-    end
-    @inbounds for terms in _rbm_parameter_sections(data)
-        n_section = _initial_param_section_width(terms)
-        if n_section > 0
-            section_values = Vector{ComplexF64}(undef, n_section)
-            for i = 1:n_section
-                section_values[i] = ComplexF64(values[idx], values[idx+1])
-                idx += 3
-            end
-            _set_indexed_terms_from_values!(terms, section_values)
-        end
-    end
-    slater_values = Vector{ComplexF64}(undef, n_slater)
-    @inbounds for i = 1:n_slater
-        slater_values[i] = ComplexF64(values[idx], values[idx+1])
-        idx += 3
-    end
-    @inbounds for term in data.orbital_terms
-        if term.idx >= 0 && term.idx < n_slater
-            term.value = slater_values[term.idx+1]
-        end
-    end
-    @inbounds for i = 1:n_opt_trans
-        data.opt_trans[i] = ComplexF64(values[idx], values[idx+1])
-        idx += 3
-    end
+    dense = ComplexF64[ComplexF64(values[i], values[i+1]) for i in 7:3:expected_floats]
+    unpack_parameters!(data, dense)
 
     return (true, n_proj + n_rbm + n_slater + n_opt_trans, "")
 end

@@ -72,11 +72,6 @@ function parse_interall_content(content::String)::ParseResult{Vector{InterAllTer
             continue
         end
 
-        # Skip lines that look like headers (contain letters but not just numbers)
-        if occursin(r"[A-Za-z]", clean_line_str)
-            continue
-        end
-
         try
             # Parse line: site0 spin0 site1 spin1 site2 spin2 site3 spin3 real_value imag_value
             parts = split(clean_line_str)
@@ -85,7 +80,8 @@ function parse_interall_content(content::String)::ParseResult{Vector{InterAllTer
                 continue
             end
 
-            # Parse all 10 values (matching C implementation exactly)
+            # Typed fields distinguish data from textual headers. Exponent
+            # letters in Float64 coefficients are valid data (C reads %lf).
             site0 = parse(Int, parts[1])
             spin0 = parse(Int, parts[2])
             site1 = parse(Int, parts[3])

@@ -28,6 +28,7 @@ include("types/expert_types.jl")
 include("utils/constants.jl")
 include("utils/file_utils.jl")
 include("utils/validation.jl")
+include("utils/retained_parameters.jl")
 include("utils/parameter_init.jl")
 include("utils/read_input_parameters.jl")
 include("utils/qp_weight.jl")
@@ -243,6 +244,7 @@ function apply_orbital_opt_flags_from_files!(
 )
     orbital_opt_flags = Dict{Int,Int}()
     n_orbital_anti_parallel = 0
+    orbital_complex_sum = 0
 
     for (file_type, file_path) in file_list
         if !(
@@ -259,6 +261,17 @@ function apply_orbital_opt_flags_from_files!(
 
         result, opt_flags, header_count = parse_orbital_def(full_path)
         result.success || continue
+
+        # Read the declaration, not populated terms: a section may reserve
+        # parameters without supplying a corresponding mapping record.
+        header = split(read(full_path, String), '\n')
+        if length(header) >= 3
+            fields = split(clean_line(header[3]))
+            if length(fields) == 2 && fields[1] == "ComplexType"
+                declaration = parse(Int, fields[2])
+                orbital_complex_sum += declaration
+            end
+        end
 
         # Record NArrayAP from the header (C's iNOrbitalAntiParallel) before the
         # opt-flag emptiness check, so the parallel opt-flag offset below is
@@ -285,7 +298,7 @@ function apply_orbital_opt_flags_from_files!(
         end
     end
 
-    set_orbital_opt_flags!(data, orbital_opt_flags)
+    set_orbital_opt_flags!(data, orbital_opt_flags; orbital_complex = orbital_complex_sum > 0)
 end
 
 function apply_rbm_opt_flags_from_files!(
@@ -682,11 +695,12 @@ function parse_file_by_type!(data::ExpertModeData, file_type::String, file_path:
                         if length(tokens) >= 2
                             idx = safe_parse_int(tokens[1], -1)
                             value = safe_parse_float(tokens[2])
+                            imaginary = length(tokens) >= 3 ? safe_parse_float(tokens[3]) : 0.0
                             if idx >= 0
                                 while length(para_qp_trans) <= idx
                                     push!(para_qp_trans, ComplexF64(0.0))
                                 end
-                                para_qp_trans[idx+1] = ComplexF64(value)
+                                para_qp_trans[idx+1] = ComplexF64(value, imaginary)
                             end
                             line_idx += 1
                             break

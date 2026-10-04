@@ -1,0 +1,12 @@
+ordinary_complex_factor.jl is a private Julia translation of Michael Wimmer's
+PFAPACK ZSKTF2 upper/normal branch and ZSKR2 upper/unit-stride branch.
+Authoritative mVMC C gitlink d73d06bd529d3b2573f38eb5817c4a5f52971006,
+nested PFAPACK ebaa11b722dbb5f1ddc62da607592d2e301c0c4a.
+zsktf2.f lines210-261, SHA256 f418a9c878434d0f441336b2b1b9016a16548fccb20bc924de2f5a15782d0d62;
+zskr2.f lines162-177, SHA256 c1cc1cf9753a2f16d2551cab0e52490ccc873ff26f84727b45a5e51dd9d095d7.
+The LAPACK-style modified BSD-3 license and upstream notices are reproduced in
+ordinary_complex_factor.LICENSE. This private helper changes no PfaPack methods.
+The original dependency implementation remains available as a reference, not
+as an alternate numerical path used by the ordinary production runner.
+Complex division uses the existing private GNU/LLVM-port helper and its existing
+source-adjacent notices/licenses; no native runtime or compiler dependency added.

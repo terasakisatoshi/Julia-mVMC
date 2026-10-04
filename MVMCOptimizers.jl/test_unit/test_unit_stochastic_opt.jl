@@ -122,11 +122,12 @@ end
 
     # RBM and Slater offsets move after the DH projection slice.
     MVMCOptimizers.update_parameter_value(data, 9, real(delta), imag(delta))
-    @test data.charge_rbm_phys_layer_terms[1].value == orig_charge_phys[1] + delta
+    # Inconsistent Julia-only duplicates gather last-wins, then scatter one C slot.
+    @test data.charge_rbm_phys_layer_terms[1].value == orig_charge_phys[2] + delta
     @test data.charge_rbm_phys_layer_terms[2].value == orig_charge_phys[2] + delta
 
     MVMCOptimizers.update_parameter_value(data, 18, real(delta), imag(delta))
-    @test data.orbital_terms[1].value == orig_orbital[1] + delta
+    @test data.orbital_terms[1].value == orig_orbital[2] + delta
     @test data.orbital_terms[2].value == orig_orbital[2] + delta
     @test data.orbital_terms[3].value == orig_orbital[3]
 end
@@ -157,11 +158,11 @@ end
 
     # RBM and Slater offsets move after the DH4 projection slice.
     MVMCOptimizers.update_parameter_value(data, 13, real(delta), imag(delta))
-    @test data.charge_rbm_phys_layer_terms[1].value == orig_charge_phys[1] + delta
+    @test data.charge_rbm_phys_layer_terms[1].value == orig_charge_phys[2] + delta
     @test data.charge_rbm_phys_layer_terms[2].value == orig_charge_phys[2] + delta
 
     MVMCOptimizers.update_parameter_value(data, 22, real(delta), imag(delta))
-    @test data.orbital_terms[1].value == orig_orbital[1] + delta
+    @test data.orbital_terms[1].value == orig_orbital[2] + delta
     @test data.orbital_terms[2].value == orig_orbital[2] + delta
     @test data.orbital_terms[3].value == orig_orbital[3]
 end
@@ -386,19 +387,19 @@ end
     # NRBM = 9 (one idx per section); para_idx 3..11 map to RBM block.
     # First RBM parameter -> charge phys idx=0 (all matching terms updated).
     MVMCOptimizers.update_parameter_value(data, 3, real(delta), imag(delta))
-    @test data.charge_rbm_phys_layer_terms[1].value == 10.0 + 0.0im + delta
+    @test data.charge_rbm_phys_layer_terms[1].value == 11.0 + 0.0im + delta
     @test data.charge_rbm_phys_layer_terms[2].value == 11.0 + 0.0im + delta
     @test data.spin_rbm_phys_layer_terms[1].value == 20.0 + 0.0im
 
     # Last RBM parameter -> general phys-hidden idx=0 (all matching terms updated).
     MVMCOptimizers.update_parameter_value(data, 11, real(delta), imag(delta))
-    @test data.general_rbm_phys_hidden_terms[1].value == 90.0 + 0.0im + delta
+    @test data.general_rbm_phys_hidden_terms[1].value == 91.0 + 0.0im + delta
     @test data.general_rbm_phys_hidden_terms[2].value == 91.0 + 0.0im + delta
     @test data.charge_rbm_phys_hidden_terms[1].value == 70.0 + 0.0im
 
     # Slater starts at para_idx = NProj + NRBM + 1 = 12
     MVMCOptimizers.update_parameter_value(data, 12, real(delta), imag(delta))
-    @test data.orbital_terms[1].value == 100.0 + 0.0im + delta
+    @test data.orbital_terms[1].value == 101.0 + 0.0im + delta
     @test data.orbital_terms[2].value == 101.0 + 0.0im + delta
     @test data.orbital_terms[3].value == 110.0 + 0.0im
 

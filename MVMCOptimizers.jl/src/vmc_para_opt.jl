@@ -359,7 +359,7 @@ function vmc_para_opt!(
 
     # Final output (rank0 のみ; C `if(rank==0) outputData()` 相当)
     is_output_rank(ctx) && println("Start: Output opt params.")
-    is_output_rank(ctx) && output_opt_data!(data; output_dir=output_dir)
+    is_output_rank(ctx) && output_opt_data!(data, state; output_dir=output_dir)
     is_output_rank(ctx) && println("End: Output opt params.")
 
     ctimer_stop!(timer, 2)
