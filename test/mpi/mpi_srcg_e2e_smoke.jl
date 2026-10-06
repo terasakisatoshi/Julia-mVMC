@@ -29,18 +29,6 @@ function parse_complex_pairs(path)
     return [ComplexF64(vals[2*i-1], vals[2*i]) for i = 1:div(length(vals), 2)]
 end
 
-function parse_orbital_parameter_indices(path)
-    idxs = Int[]
-    for line in eachline(path)
-        parts = split(strip(line))
-        length(parts) == 3 || continue
-        parsed = tryparse.(Int, parts)
-        any(isnothing, parsed) && continue
-        push!(idxs, parsed[3] + 1)  # C idx -> Julia 1-based parameter slot
-    end
-    return idxs
-end
-
 try
     result = MVMCOptimizers.run_para_opt_from_namelist(
         fixture; nsteps = 1, nsmp = 1, mode = :real, output_dir = outdir)
@@ -63,17 +51,17 @@ try
         @test strip.(readlines(joinpath(outdir, "zvo_SRinfo.dat"))) ==
               strip.(readlines(joinpath(refdir, "zvo_SRinfo_mpi2_1step.dat")))
 
-        c_params = parse_complex_pairs(joinpath(refdir, "zqp_opt_mpi2_1step.dat"))[3:end]
+        # NSROptItrSmp=1: E/E², then unique Para (two projection, 12 orbital).
+        c_pairs = parse_complex_pairs(joinpath(refdir, "zqp_opt_mpi2_1step.dat"))
         julia_pairs = parse_complex_pairs(joinpath(outdir, "zqp_opt.dat"))
-        orbital_idxs = parse_orbital_parameter_indices(joinpath(refdir, "inputs", "orbitalidx.def"))
-
-        @test length(c_params) == 14
-        @test length(julia_pairs) == 2 + length(orbital_idxs)
-        @test maximum(abs.(julia_pairs[1:2] .- c_params[1:2])) <= tol_default
-        orbital_maxdiff = maximum(
-            abs(julia_pairs[2+k] - c_params[2+orbital_idxs[k]]) for k in eachindex(orbital_idxs)
-        )
-        @test orbital_maxdiff <= nsrcg_param_tol
+        @test length(c_pairs) == 2 + 14
+        @test length(julia_pairs) == length(c_pairs)
+        if length(julia_pairs) == length(c_pairs) == 16
+            @test abs(julia_pairs[1] - c_pairs[1]) <= tol_default
+            @test abs(julia_pairs[2] - c_pairs[2]) <= tol_loose
+            @test maximum(abs.(julia_pairs[3:4] .- c_pairs[3:4])) <= tol_default
+            @test maximum(abs.(julia_pairs[5:end] .- c_pairs[5:end])) <= nsrcg_param_tol
+        end
 
         println("srcg-e2e worker: root rank ok")
     end

@@ -79,28 +79,15 @@ function vmc_phys_cal!(
     # InitParameter() consumes RNG for Slater initialization, but values are overwritten by ReadInputParameters()
     # To match C's RNG state at VMCPhysCal() entry, we must consume the same amount of RNG
     #
-    # Save current parameter values (they were already loaded from InOrbital etc.)
-    saved_orbital_values = [term.value for term in data.orbital_terms]
-    saved_gutzwiller_values = [term.value for term in data.gutzwiller_terms]
-    saved_jastrow_values = [term.value for term in data.jastrow_terms]
-    saved_dh2_values = copy(data.doublon_holon_2site_params)
-    saved_dh4_values = copy(data.doublon_holon_4site_params)
+    # Save all declared Para slots, including unmapped storage and RBM/OptTrans.
+    # init_parameter! resets retained storage as well as the mapped terms.
+    saved_parameters = pack_parameters(data)
 
     # Call init_parameter! to consume RNG (matches C's InitParameter())
     init_parameter!(data; rng = rng)
 
-    # Restore the original parameter values (simulates C's ReadInputParameters() overwriting)
-    for (i, term) in enumerate(data.orbital_terms)
-        term.value = saved_orbital_values[i]
-    end
-    for (i, term) in enumerate(data.gutzwiller_terms)
-        term.value = saved_gutzwiller_values[i]
-    end
-    for (i, term) in enumerate(data.jastrow_terms)
-        term.value = saved_jastrow_values[i]
-    end
-    copyto!(data.doublon_holon_2site_params, saved_dh2_values)
-    copyto!(data.doublon_holon_4site_params, saved_dh4_values)
+    # Restore the fixed parameters without consuming any additional RNG draws.
+    unpack_parameters!(data, saved_parameters)
 
     # Get parameters
     n_data_qty_smp = data.modpara.n_data_qty_smp  # Number of sampling runs

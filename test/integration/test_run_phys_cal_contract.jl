@@ -54,6 +54,44 @@ using MVMCOptimizers
     end
 end
 
+@testset "PhysCal preserves fixed unmapped Slater slots" begin
+    refdir = joinpath(@__DIR__, "reference", "heisenberg_chain_real", "physcal_ref")
+    mktempdir() do dir
+        inputs = joinpath(dir, "inputs")
+        cp(joinpath(refdir, "inputs"), inputs)
+        orbital = joinpath(inputs, "orbitalidx.def")
+        definitions = replace(read(orbital, String), r"NOrbitalIdx\s+12" => "NOrbitalIdx 13")
+        # This slot has a declared opt flag but no site-pair mapping. Exercise
+        # both zero initialization and random initialization before restoration.
+        fixed = joinpath(dir, "fixed.dat")
+        write(fixed, strip(read(joinpath(refdir, "zqp_opt.dat"), String)), " 2.5 0 0\n")
+        modpara = joinpath(inputs, "modpara.def")
+        text = read(modpara, String)
+        for (key, count) in (("NVMCSample", 2), ("NVMCWarmUp", 1), ("NVMCInterval", 1))
+            text = replace(text, Regex("(?m)^(\\s*" * key * "\\s+)\\S+") =>
+                match -> first(split(match)) * " " * string(count))
+        end
+        write(modpara, text)
+        # The public loader normalizes the Slater block to max(abs(f)) = 4.
+        values = parse.(Float64, split(read(fixed, String)))
+        expected = complex.(values[7:3:end], values[8:3:end])
+        expected[3:end] .*= 4 / maximum(abs, expected[3:end])
+        @test expected[end] == 2.5
+        for flag in (0, 1)
+            write(orbital, definitions, "12 $flag\n")
+            result = run_phys_cal_from_namelist(joinpath(inputs, "namelist.def");
+                opt_para=fixed, mode=:real, output_dir=joinpath(dir, "out$flag"))
+            @test result.status == 0
+            @test result.n_para_consumed == 15
+            output = parse.(Float64, split(read(joinpath(result.output_dir, "zvo_var_001.dat"), String)))
+            @test length(output) == 6 + 3 * 15
+            actual = complex.(output[7:3:end], output[8:3:end])
+            @test actual ≈ expected rtol=2eps(Float64) atol=0
+            @test actual[end] == 2.5
+        end
+    end
+end
+
 # Regression: `MVMC_C_TIMER=1` must emit the C-format PhysCal section report
 # (`OutputTimerPhysCal`) and must not perturb the sampling/output path. The
 # fixture is the committed fixed-parameter PhysCal set (NDataQtySmp=1), so one

@@ -16,6 +16,24 @@ fsz_component_agrees(a::Complex, b::Complex) =
     fsz_component_agrees(real(a),real(b)) && fsz_component_agrees(imag(a),imag(b))
 fsz_component_agrees(a::Real, b::Complex) = fsz_component_agrees(complex(a),b)
 
+function fsz_inverse_agrees(actual, expected)
+    # The inverse of a skew matrix has an exactly zero diagonal. BLAS providers
+    # leave different cancellation residues there, so compare that diagonal
+    # with the matrix scale. Keep the component policy for off-diagonal entries
+    # (including the subnormal inverse entries in the overflow fixture).
+    n = isqrt(length(expected))
+    scale = maximum(z -> max(abs(real(z)), abs(imag(z))), expected)
+    return all(eachindex(expected)) do i
+        a, b = actual[i], expected[i]
+        if (i-1) % (n+1) == 0
+            all(isfinite, (real(a),imag(a),real(b),imag(b))) || return false
+            return max(abs(real(a)),abs(imag(a)),abs(real(b)),abs(imag(b))) <=
+                64eps(Float64)*scale + 4nextfloat(0.0)
+        end
+        return fsz_component_agrees(a,b)
+    end
+end
+
 @testset "FSZ saved planes accept real and complex log IP" begin
     data = ExpertModeData()
     data.modpara.nsite = 2; data.modpara.nelec = 2
@@ -237,7 +255,7 @@ end
             target = [complex(parse(Float64,words[i]),parse(Float64,words[i+1])) for i in 10:2:40]
             actual = inv[16*(qp-1)+1:16*qp]
             @test length(actual) == length(target) == 16
-            @test all(fsz_component_agrees(a,b) for (a,b) in zip(actual,target))
+            @test fsz_inverse_agrees(actual,target)
             # Four products/three additions per entry. Scaled backward residual
             # tests the original real/complex matrix, independently of C values.
             # Use BigFloat only in this test to avoid overflow of the huge case.

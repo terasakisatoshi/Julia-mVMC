@@ -22,7 +22,7 @@ The post-allocation-guard adapter regenerated all three files with identical
 hashes. No numerical C function body is patched.
 
 Serial fixed-input kernel, NOT C initialization/sampling or MPI execution.
-Generation: Dev Container73c57e563c61, Linuxx86_64, GCC13.3.0,
+Generation: Linux x86_64, GCC13.3.0,
 -O0 -ffp-contract=off, LP64 OpenBLAS pthread0.3.26, one thread;
 library SHA256 bfc7492adbf84a8f567720a9e1fae2afc18f3d817da233e7f4d453683485308e.
 Real executable c72f45946fab01d6de2b2afa66357b5149439428672a8a29c2add4762102783a;
@@ -54,13 +54,30 @@ OPENBLAS_NUM_THREADS=1 /tmp/complex-cg sampled_complex.txt /tmp/sampled_complex.
 ```
 
 Normal Julia tests read these checked-in fixtures only, without a C compiler,
-oracle invocation or Rust checkout. Julia1.13.1 validation uses actual
-OpenBLAS0.3.30 ILP64/Haswell, one thread, local uncommitted Manifest-v1.13.
-Unchanged C-refresh budgets: operator abs/rel8*(n+samples)*eps; iterate
-abs/rel8*(n+samples)*limit*eps; independent explicit-Gram backward residual
-abs16*(n+samples)*limit*eps*(abs(g)+sum(abs(A*x))), rel0.
-There are14,673 assertions across all three cases and41 limits, including
-explicit fixture shape and iteration-bound checks. The first
-computed C-Julia difference was none on the observed Linux environment;
-different BLAS environments must still pass the justified numerical bounds.
-No new full sampling/MPI residual acceptance claim follows from this fixture.
+oracle invocation or Rust checkout. The original validation used Julia1.13.1
+and OpenBLAS0.3.30 ILP64/Haswell with one thread.
+
+The operator and first CG step use the original component budget
+`8*(n+samples)*eps`. Later truncated iterates are not compared componentwise
+across BLAS providers: the real, complex and sampled-complex covariance
+condition numbers are approximately `3.6e9`, `5.0e8` and `9.6e6`.
+An iteration-count-times-epsilon budget cannot bound their forward sensitivity.
+On macOS aarch64 the archived trajectories first exceed that budget at
+iterations 7, 7 and 6, even though the independent residual checks pass.
+
+All limits 1--41 still exercise the production solver and validate the archived
+C records. Both native and Julia residuals are checked against the explicit
+covariance with the original budget
+`16*(n+samples)*limit*eps*(abs(g)+sum(abs(A*x)))`. Limits 20 and 40 also
+verify that the solver replaces its residual by `g-S*x` using the same local
+backend. This checks the refresh boundary without requiring cross-provider
+bitwise equality. Residual consistency alone is not a convergence test.
+
+Separate analytic SPD tests provide the convergence gate: 64 paired sample
+directions give a known diagonal covariance, including nonzero means, a
+diagonal shift and real/imaginary sample contributions. Its condition number
+is exactly 4096. The solver must cross both refresh boundaries, converge,
+and agree with the independent analytic solution and residual within
+dimension/condition-scaled roundoff bounds. The tiny-SPD native regression
+still detects the former absolute denominator cutoff. Existing fixture bytes
+and the production CG recurrence are unchanged.
