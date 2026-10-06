@@ -251,6 +251,7 @@ Files are optional: missing `In*.def` entries (or files referenced by
 `namelist.def` but absent on disk) are silently skipped.
 """
 function read_input_parameters!(data::ExpertModeData, namelist_path::String)
+    gather_retained_parameters!(data)
     base_dir = dirname(abspath(namelist_path))
 
     # Read namelist.def to get file list
@@ -259,6 +260,7 @@ function read_input_parameters!(data::ExpertModeData, namelist_path::String)
 
     # Process InGutzwiller.def
     for (file_type, file_path) in file_list
+        params = nothing
         if file_type == "InGutzwiller"
             full_path = joinpath(base_dir, file_path)
             if validate_file_exists(full_path)
@@ -389,8 +391,10 @@ function read_input_parameters!(data::ExpertModeData, namelist_path::String)
                 end
             end
         end
+        params === nothing || retain_input_overlay!(data, file_type, params)
     end
 
+    gather_retained_parameters!(data)
     return data
 end
 
@@ -466,13 +470,15 @@ function set_projection_opt_flags!(
 end
 
 """
-    set_orbital_opt_flags!(data::ExpertModeData, opt_flags::Dict{Int, Int})
+    set_orbital_opt_flags!(data::ExpertModeData, opt_flags::Dict{Int, Int}; orbital_complex::Bool)
 
 Set OptFlag for orbital parameters in data.optimization_flags.
-C implementation: OptFlag[2*fidx] (real) and OptFlag[2*fidx+1] (imag, if complex)
+C implementation: normalized orbital header sum, independent of AllComplexFlag.
+AP copies real flags when complex; P writes the normalized header flag.
+Noncomplex AP imaginary false is a safe extension, not native malloc zero.
 where fidx = NProj + FlagRBM * NRBM + orbital_idx.
 """
-function set_orbital_opt_flags!(data::ExpertModeData, opt_flags::Dict{Int,Int})
+function set_orbital_opt_flags!(data::ExpertModeData, opt_flags::Dict{Int,Int}; orbital_complex::Bool)
     if isempty(opt_flags)
         return
     end
@@ -484,7 +490,9 @@ function set_orbital_opt_flags!(data::ExpertModeData, opt_flags::Dict{Int,Int})
     fidx_offset = n_proj + flag_rbm * n_rbm
 
     # Get complex flag for orbital parameters
-    is_complex = _get_all_complex_flag_local(data)
+    # readdef.c normalizes the AP/P orbital header sum independently of
+    # AllComplexFlag: complex projection parameters must not enable this mask.
+    is_complex = orbital_complex
 
     # Initialize or resize optimization_flags
     n_para =
@@ -501,10 +509,14 @@ function set_orbital_opt_flags!(data::ExpertModeData, opt_flags::Dict{Int,Int})
         fidx = fidx_offset + idx
         if 2 * fidx + 1 <= length(data.optimization_flags)
             data.optimization_flags[2*fidx+1] = (opt_flag != 0)  # Real part (1-based)
-            if is_complex
-                # C: OptFlag[2*fidx+1] = opt_flag (imaginary part)
-                data.optimization_flags[2*fidx+2] = (opt_flag != 0)  # Imaginary part (1-based)
-            end
+            is_parallel = data.i_flg_orbital_parallel == 1 &&
+                          idx >= data.n_orbital_anti_parallel
+            # GetInfoOptOrbitalParalell writes the normalized header flag even
+            # when the parallel real flag is zero. GetInfoOpt copies real flags.
+            # For noncomplex AP, C leaves this malloc-backed slot unwritten;
+            # false is a deterministic safe-port extension, not native C zero.
+            data.optimization_flags[2*fidx+2] =
+                is_complex && (is_parallel || opt_flag != 0)
         end
     end
 end

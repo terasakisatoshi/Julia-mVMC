@@ -19,16 +19,18 @@ const srcg_e2e_worker = joinpath(@__DIR__, "mpi_srcg_e2e_smoke.jl")
 const failure_worker = joinpath(@__DIR__, "mpi_failure_modes.jl")
 const project = abspath(joinpath(@__DIR__, "..", ".."))
 const para_opt_files = (
-    "zqp_gutzwiller_opt.dat",
-    "zqp_jastrow_opt.dat",
     "zqp_opt.dat",
-    "zqp_orbital_opt.dat",
     "zvo_out.dat",
     "zvo_var.dat",
 )
+const para_opt_family_files = (
+    "zqp_gutzwiller_opt.dat",
+    "zqp_jastrow_opt.dat",
+    "zqp_orbital_opt.dat",
+)
 const physcal_files = (
-    "zvo_out.dat",
-    "zvo_var.dat",
+    "zvo_out_001.dat",
+    "zvo_var_001.dat",
     "zvo_cisajs_001.dat",
     "zvo_cisajscktalt_001.dat",
     "zvo_cisajscktaltex_001.dat",
@@ -44,6 +46,16 @@ const physcal_nsplit_tol = 5e-8
 function assert_files_present(dir::AbstractString, names)
     for name in names
         @test isfile(joinpath(dir, name))
+    end
+end
+
+function assert_para_opt_files(dir::AbstractString; nsmp::Int = 1)
+    assert_files_present(dir, para_opt_files)
+    if nsmp == 1
+        # C OutputOptData writes only the combined pairs record for one sample.
+        @test all(name -> !isfile(joinpath(dir, name)), para_opt_family_files)
+    else
+        assert_files_present(dir, para_opt_family_files)
     end
 end
 
@@ -69,7 +81,7 @@ function run_nsplit_nstore_case(fixture::AbstractString, mode::AbstractString,
         `$(mpiexec()) -n $nranks $(Base.julia_cmd()) --project=$project $nsplit_nstore_worker $fixture $mode $nsplit $nstore $mpi_dir`,
         String,
     )
-    assert_files_present(mpi_dir, para_opt_files)
+    assert_para_opt_files(mpi_dir)
     @test length(readlines(joinpath(mpi_dir, "zvo_out.dat"))) == 1
     label = "nsplit-nstore worker: $fixture nsplit=$nsplit nstore=$nstore"
     @test count("$label root rank ok", out) == 1
@@ -94,7 +106,7 @@ function run_nsplit_standard_projection_case(
         cmd = addenv(cmd, "JULIA_MVMC_SMOKE_NSPGAUSSLEG" => string(nsp_gauss_leg))
     end
     out = read(cmd, String)
-    assert_files_present(mpi_dir, para_opt_files)
+    assert_para_opt_files(mpi_dir)
     label = "nsplit-standard-projection worker: $fixture nsplit=$nsplit nstore=$nstore"
     @test count("$label root rank ok", out) == 1
     @test count("$label non-root rank ok", out) == nranks - 1
@@ -121,8 +133,8 @@ function run_physcal_nsplit_case(
     @test count("$label root rank ok", out) == 1
     @test count("$label non-root rank ok", out) == nranks - 1
     return (
-        zvo = parse_numeric_file(joinpath(mpi_dir, "zvo_out.dat")),
-        var = parse_numeric_file(joinpath(mpi_dir, "zvo_var.dat")),
+        zvo = parse_numeric_file(joinpath(mpi_dir, "zvo_out_001.dat")),
+        var = parse_numeric_file(joinpath(mpi_dir, "zvo_var_001.dat")),
         cisajs = parse_numeric_file(joinpath(mpi_dir, "zvo_cisajs_001.dat")),
         two_body = parse_numeric_file(joinpath(mpi_dir, "zvo_cisajscktalt_001.dat")),
         factored = parse_numeric_file(joinpath(mpi_dir, "zvo_cisajscktaltex_001.dat")),
@@ -160,7 +172,7 @@ end
     mpi_dir = mktempdir()
     out = read(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project=$project $hubbard_worker $mpi_dir`,
                String)
-    assert_files_present(mpi_dir, para_opt_files)
+    assert_para_opt_files(mpi_dir; nsmp = 4)
     zvo_lines = readlines(joinpath(mpi_dir, "zvo_out.dat"))
     @test length(zvo_lines) == 4
     @test all(line -> length(split(strip(line))) >= 2, zvo_lines)
@@ -192,7 +204,7 @@ end
     mpi_dir = mktempdir()
     out = read(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project=$project $srcg_e2e_worker $mpi_dir`,
                String)
-    assert_files_present(mpi_dir, para_opt_files)
+    assert_para_opt_files(mpi_dir)
     @test isfile(joinpath(mpi_dir, "zvo_SRinfo.dat"))
     @test count("srcg-e2e worker: root rank ok", out) == 1
     @test count("srcg-e2e worker: non-root rank ok", out) == 1
@@ -335,7 +347,7 @@ end
 @testset "R1 mpiexec -n 4 para-opt smoke" begin
     mpi_dir = mktempdir()
     run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project=$project $worker $mpi_dir`)
-    assert_files_present(mpi_dir, para_opt_files)
+    assert_para_opt_files(mpi_dir; nsmp = 4)
     zvo_lines = readlines(joinpath(mpi_dir, "zvo_out.dat"))
     @test length(zvo_lines) == 4
     @test all(line -> length(split(strip(line))) >= 2, zvo_lines)

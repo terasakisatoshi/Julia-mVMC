@@ -1,0 +1,9 @@
+ordinary_real_inverse.jl is a modified real-only Julia translation of
+RuQing Xu's xrq-phys/Pfaffine invert.tcc, bundled by mVMC1.3.0, and the
+MPL-2.0 Julia port PfaPack.jl/src/utu2.jl by Terasaki/Misawa.
+Origin invert.tcc SHA256 d477c7d2bb6d2b0c29872d06ec75fd7e804e1e30ace00888b77d31d2c74b821c.
+sktdsmx origin lines11-28; utu2inv upper pipeline lines76-120.
+The source-adjacent ordinary_real_inverse.LICENSE reproduces MPL-2.0.
+Modification: private ordinary-real scalar divisions replace reciprocal
+multiplication; the existing TRTRI/copy/solve/column-permute/TRMM/row-permute
+sequence remains unchanged. No PfaPack methods are extended or replaced.

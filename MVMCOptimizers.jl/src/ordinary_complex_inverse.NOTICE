@@ -1,0 +1,9 @@
+ordinary_complex_inverse.jl is a modified complex-only Julia translation of
+RuQing Xu's xrq-phys/Pfaffine invert.tcc, bundled by mVMC1.3.0, and the
+MPL-2.0 Julia port PfaPack.jl/src/utu2.jl by Terasaki/Misawa.
+Original invert.tcc SHAd477c7d2bb6d2b0c29872d06ec75fd7e804e1e30ace00888b77d31d2c74b821c;
+sktdsmx lines11-28; upper/full pipeline76-118. Full MPL license is adjacent.
+Four scalar branches invoke the private platform quotient; existing TRTRI,
+copy, vT, column permutation, FULL TRMM and row permutation remain in order.
+C ILAENV !full panel/trmmt branch is not newly ported. Ordinary complex child
+only; no PfaPack methods, complexfactor, realroute or FSZroute are replaced.

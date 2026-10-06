@@ -228,21 +228,25 @@ end
     get_parameter_value(data, para_idx) -> ComplexF64
 
 flat parameter index（1-based、Proj → RBM → Slater → OptTrans）の現在値を返す。
-範囲外や layout の隙間（spin-jastrow 等）は 0 を返す（update 側が no-op になる
-index と対応）。duplicate idx は `pack_parameters` と同じ last-wins 規約で返す。
+範囲外は 0、宣言済みの未マップ slot は保持値を返す。
+duplicate idx は `pack_parameters` と同じ last-wins 規約で返す。
 書き込み側は `set_parameter_value!` が同じ layout を使う。
 """
 function get_parameter_value(data::ExpertModeData, para_idx::Int)::ComplexF64
     counts = _parameter_count_breakdown(data)
-    value = Ref(ComplexF64(0))
+    1 <= para_idx <= counts.n_para || return ComplexF64(0)
+    values, local_idx = MVMCExpertModeParsers.retained_parameter_slot!(data, para_idx)
     _foreach_parameter_location_at(data, counts, para_idx) do loc
-        value[] = _parameter_location_value(data, loc)
+        values[local_idx] = _parameter_location_value(data, loc)
     end
-    return value[]
+    return values[local_idx]
 end
 
 function _set_parameter_value_direct!(data::ExpertModeData, para_idx::Int, value::ComplexF64)
     counts = _parameter_count_breakdown(data)
+    1 <= para_idx <= counts.n_para || return nothing
+    values, local_idx = MVMCExpertModeParsers.retained_parameter_slot!(data, para_idx)
+    values[local_idx] = value
     touched_opt_trans = Ref(false)
     _foreach_parameter_location_at(data, counts, para_idx) do loc
         _set_parameter_location_value!(data, loc, value)
@@ -257,17 +261,7 @@ function _set_parameter_value_direct!(data::ExpertModeData, para_idx::Int, value
 end
 
 function _add_parameter_delta_direct!(data::ExpertModeData, para_idx::Int, delta::ComplexF64)
-    counts = _parameter_count_breakdown(data)
-    touched_opt_trans = Ref(false)
-    _foreach_parameter_location_at(data, counts, para_idx) do loc
-        _set_parameter_location_value!(data, loc, _parameter_location_value(data, loc) + delta)
-        if loc.kind == _PARAM_OPTTRANS
-            touched_opt_trans[] = true
-        end
-    end
-    if touched_opt_trans[] && data.qp_weights !== nothing
-        MVMCExpertModeParsers.update_qp_weight!(data.qp_weights, data.opt_trans)
-    end
+    _set_parameter_value_direct!(data, para_idx, get_parameter_value(data, para_idx) + delta)
     return nothing
 end
 
@@ -373,6 +367,16 @@ function build_s_matrix_and_g_vector!(
             2.0 *
             (real(sr_opt_ho[ho_idx]) - ho_0 * real(sr_opt_oo[oo_idx]))
     end
+end
+
+# Private DPOSV-equivalent phase. LAPACK potrf! returns positive info rather
+# than throwing for a non-positive leading minor. Never run substitution on
+# that partial factor: C DPOSV leaves the RHS unchanged on factorization failure.
+function _solve_direct_sr!(S::Matrix{Float64}, g::Vector{Float64})::Int
+    _, factor_info = potrf!('U', S)
+    factor_info != 0 && return 1
+    potrs!('U', S, g)
+    return 0
 end
 
 """
@@ -524,11 +528,7 @@ function stochastic_opt!(data::ExpertModeData, state::VMCOptimizationState, c_ti
     info = 0
     ctimer_start!(c_timer, 57)
     try
-        # Cholesky decomposition (upper triangular)
-        potrf!('U', S)
-
-        # Forward/backward substitution (overwrites g with solution x)
-        potrs!('U', S, g)
+        info = _solve_direct_sr!(S, g)
     catch e
         @error "DPOSV failed: $e"
         info = 1
@@ -889,9 +889,8 @@ function stochastic_opt_cg_main!(
 
         # alpha = delta / (d^T * q)
         dq = xdot(ws.d, ws.q)
-        if abs(dq) < 1e-30
-            break
-        end
+        # C stcopt_cg_impl.c:310 divides every nonzero denominator, even for
+        # well-conditioned scaled SPD systems below an absolute cutoff.
         alpha = delta / dq
 
         # Update solution: x = x + alpha * d
@@ -923,11 +922,11 @@ function stochastic_opt_cg_main!(
         end
 
         # beta = (r_new^T * r_new) / delta
-        delta_new = xdot(ws.r, ws.r)
-        beta = delta_new / delta
+        beta = xdot(ws.r, ws.r) / delta
 
         # Update delta
-        delta = delta_new
+        # Preserve C:336 multiply-back recurrence (not direct norm assignment).
+        delta = beta * delta
 
         # Update search direction: d = r + beta * d
         for si = 1:n_smat

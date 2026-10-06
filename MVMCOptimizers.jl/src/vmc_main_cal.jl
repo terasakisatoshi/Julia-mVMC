@@ -2054,39 +2054,36 @@ function calculate_hamiltonian(
 
 
     # InterAll: sum_{i,j,k,l,s,t} V_{ijkl} * <c†_{i,s} c_{j,s} c†_{k,t} c_{l,t}>
-    # Note: InterAllTerm.sites = [ri, rj, rk, rl] (4 sites)
     # In C code: InterAll[idx][0]=ri, [2]=rj, [3]=s, [4]=rk, [6]=rl, [7]=t
-    # For now, we assume spins are determined by context or use default (0, 1)
-    # TODO: Parse spin information from InterAll file if available
+    # Normal orbitals require each creation/annihilation pair to conserve spin.
     for term in data.inter_all_terms
-        if length(term.sites) >= 4
-            ri = term.sites[1]
-            rj = term.sites[2]
-            rk = term.sites[3]
-            rl = term.sites[4]
-            # Default: assume first pair is up-spin, second pair is down-spin
-            # This may need adjustment based on actual file format
-            s = 0  # up-spin for first pair
-            t = 1  # down-spin for second pair
-            if 0 <= ri < n_site && 0 <= rj < n_site && 0 <= rk < n_site && 0 <= rl < n_site
-                e +=
-                    term.value * green_func2(
-                        ri,
-                        rj,
-                        rk,
-                        rl,
-                        s,
-                        t,
-                        ip,
-                        ele_idx,
-                        ele_cfg,
-                        ele_num,
-                        ele_proj_cnt,
-                        data,
-                        state;
-                        all_complex = all_complex,
-                    )
-            end
+        if term.spin0 != term.spin1 || term.spin2 != term.spin3
+            throw(ArgumentError("normal InterAll requires spin-conserving pairs; use FSZ mode for spin-changing terms"))
+        end
+        ri = term.site0
+        rj = term.site1
+        rk = term.site2
+        rl = term.site3
+        s = term.spin1
+        t = term.spin3
+        if 0 <= ri < n_site && 0 <= rj < n_site && 0 <= rk < n_site && 0 <= rl < n_site
+            e +=
+                term.value * green_func2(
+                    ri,
+                    rj,
+                    rk,
+                    rl,
+                    s,
+                    t,
+                    ip,
+                    ele_idx,
+                    ele_cfg,
+                    ele_num,
+                    ele_proj_cnt,
+                    data,
+                    state;
+                    all_complex = all_complex,
+                )
         end
     end
     ctimer_stop!(c_timer, 72)

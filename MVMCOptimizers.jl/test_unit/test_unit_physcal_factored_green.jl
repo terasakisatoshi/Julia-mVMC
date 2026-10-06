@@ -387,13 +387,12 @@ end
     @test MVMCOptimizers.physcal_output_file_index(data, 2) == 9
 end
 
-@testset "output_data_phys!: out/var truncate-on-first-sample, Green files use NDataIdxStart" begin
-    # Regression guard for the fmt-1 fix: output_data_phys! must drive the
-    # energy/param write mode from the 0-based sample index (so the first sample
-    # truncates and a re-run does not accumulate stale lines), while numbering the
-    # Green files with ismp + NDataIdxStart. Previously the C-visible file index
-    # (>= 1 for NDataIdxStart >= 1) was forwarded as the write-mode selector, so
-    # the first sample appended instead of truncating.
+@testset "output_data_phys!: C-indexed per-sample out/var and Green files" begin
+    # Regression guard for the C parity fix: every per-sampling file uses the
+    # C-visible index `ismp + NDataIdxStart`, and each `zvo_out_XXX.dat` /
+    # `zvo_var_XXX.dat` is truncated per sample (C InitFilePhysCal opens each
+    # sample with "w" — extern/mVMC-1.3.0/src/mVMC/initfile.c:79-90), so a file
+    # never accumulates lines from earlier samples or runs.
     data = ExpertModeData()
     data.modpara.nsite = 2
     data.modpara.c_data_file_head = "zvo"
@@ -405,23 +404,30 @@ end
     state.phys_quantities = pq
 
     mktempdir() do dir
-        outpath = joinpath(dir, "zvo_out.dat")
-        varpath = joinpath(dir, "zvo_var.dat")
+        out1 = joinpath(dir, "zvo_out_001.dat")
+        var1 = joinpath(dir, "zvo_var_001.dat")
+        out2 = joinpath(dir, "zvo_out_002.dat")
+        var2 = joinpath(dir, "zvo_var_002.dat")
 
-        # One run of two samples: ismp = 0 (truncate) then 1 (append).
+        # Two samples: each gets its own one-line, truncated file.
         MVMCOptimizers.output_data_phys!(data, state, 0; output_dir = dir)
         MVMCOptimizers.output_data_phys!(data, state, 1; output_dir = dir)
-        @test count(==('\n'), read(outpath, String)) == 2  # exactly 2 lines, no stale leading line
+        @test count(==('\n'), read(out1, String)) == 1
+        @test count(==('\n'), read(out2, String)) == 1
+        @test count(==('\n'), read(var1, String)) == 1
+        @test count(==('\n'), read(var2, String)) == 1
+        @test !isfile(joinpath(dir, "zvo_out.dat"))
+        @test !isfile(joinpath(dir, "zvo_var.dat"))
 
         # Green files numbered ismp + NDataIdxStart (= 1, 2), not 0-based.
         @test isfile(joinpath(dir, "zvo_cisajs_001.dat"))
         @test isfile(joinpath(dir, "zvo_cisajs_002.dat"))
         @test !isfile(joinpath(dir, "zvo_cisajs_000.dat"))
 
-        # A fresh run (ismp = 0 again) re-truncates out/var — no cross-run pollution.
+        # Re-running sample 0 re-truncates only its own file — no stale lines.
         MVMCOptimizers.output_data_phys!(data, state, 0; output_dir = dir)
-        @test count(==('\n'), read(outpath, String)) == 1
-        @test isfile(varpath)
+        @test count(==('\n'), read(out1, String)) == 1
+        @test count(==('\n'), read(out2, String)) == 1
     end
 end
 

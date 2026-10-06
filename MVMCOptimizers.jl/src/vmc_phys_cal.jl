@@ -26,14 +26,18 @@ C implementation: vmcmain.c:VMCPhysCal()
   matching `run_phys_cal_from_namelist` as of v0.4.
   When a non-`nothing` RNG is passed in, it is used **as-is**; the
   caller is responsible for seeding it.
+- `c_timer::Union{CTimer,Nothing}`: optional C-compatible section timer. When
+  `nothing` (default) all `ctimer_*` calls are no-ops and the numerical path is
+  unchanged. `run_phys_cal_from_namelist` passes a `CTimer` built from
+  `MVMC_C_TIMER`; it relies on the caller to write the report file.
 
 # Returns
 - `info::Int`: Return code (0 = success, non-zero = error)
 
 # Output Files
-- `zvo_out.dat`: Energy (one line per sample, truncated on the first sample;
-  not per-sample indexed, unlike C — see `output_data_phys!`)
-- `zvo_var.dat`: Parameters (same convention as `zvo_out.dat`)
+- `zvo_out_XXX.dat`: Energy for sample `XXX = ismp + NDataIdxStart` (one line
+  per file, per-sample indexed like C `InitFilePhysCal`)
+- `zvo_var_XXX.dat`: Parameters (same per-sample indexing as `zvo_out_XXX.dat`)
 - `zvo_cisajs_XXX.dat`: 1-body Green's function (`XXX = ismp + NDataIdxStart`)
 - `zvo_cisajscktaltex_XXX.dat`: factored two-body Green (product / `TwoBodyGEx`)
 - `zvo_cisajscktalt_XXX.dat`: direct two-body Green (`TwoBodyG`)
@@ -44,7 +48,14 @@ function vmc_phys_cal!(
     rng::Union{AbstractRNG,Nothing} = nothing,
     output_dir::Union{String,Nothing} = nothing,
     ctx::ParallelContext = serial_context(),
+    c_timer::Union{CTimer,Nothing} = nothing,
 )::Int
+    # C-compatible section timer. `nothing` -> disabled singleton (no-op
+    # dispatch); a concretely typed CTimer flows in from
+    # `run_phys_cal_from_namelist` through this function barrier, after which the
+    # per-sample ctimer_* calls specialise on its type.
+    timer = c_timer === nothing ? CTIMER_DISABLED : c_timer
+
     # Reject unsupported global / PhysCal combinations before any work.
     validate_supported_modpara(data.modpara)
     validate_supported_phys_cal_modpara(data.modpara)
@@ -68,28 +79,15 @@ function vmc_phys_cal!(
     # InitParameter() consumes RNG for Slater initialization, but values are overwritten by ReadInputParameters()
     # To match C's RNG state at VMCPhysCal() entry, we must consume the same amount of RNG
     #
-    # Save current parameter values (they were already loaded from InOrbital etc.)
-    saved_orbital_values = [term.value for term in data.orbital_terms]
-    saved_gutzwiller_values = [term.value for term in data.gutzwiller_terms]
-    saved_jastrow_values = [term.value for term in data.jastrow_terms]
-    saved_dh2_values = copy(data.doublon_holon_2site_params)
-    saved_dh4_values = copy(data.doublon_holon_4site_params)
+    # Save all declared Para slots, including unmapped storage and RBM/OptTrans.
+    # init_parameter! resets retained storage as well as the mapped terms.
+    saved_parameters = pack_parameters(data)
 
     # Call init_parameter! to consume RNG (matches C's InitParameter())
     init_parameter!(data; rng = rng)
 
-    # Restore the original parameter values (simulates C's ReadInputParameters() overwriting)
-    for (i, term) in enumerate(data.orbital_terms)
-        term.value = saved_orbital_values[i]
-    end
-    for (i, term) in enumerate(data.gutzwiller_terms)
-        term.value = saved_gutzwiller_values[i]
-    end
-    for (i, term) in enumerate(data.jastrow_terms)
-        term.value = saved_jastrow_values[i]
-    end
-    copyto!(data.doublon_holon_2site_params, saved_dh2_values)
-    copyto!(data.doublon_holon_4site_params, saved_dh4_values)
+    # Restore the fixed parameters without consuming any additional RNG draws.
+    unpack_parameters!(data, saved_parameters)
 
     # Get parameters
     n_data_qty_smp = data.modpara.n_data_qty_smp  # Number of sampling runs
@@ -158,11 +156,13 @@ function vmc_phys_cal!(
 
     # Update Slater matrix elements
     # C: UpdateSlaterElm_fcmp() is called at the start of VMCPhysCal()
+    ctimer_start!(timer, 20)
     if i_flg_orbital_general == 0
         update_slater_elm_fcmp!(data, state)
     else
         update_slater_elm_fsz!(data, state)
     end
+    ctimer_stop!(timer, 20)
 
     # Note: C's VMCPhysCal does NOT call UpdateQPWeight() (unlike VMCParaOpt)
     # The QP weights are already initialized above
@@ -180,7 +180,9 @@ function vmc_phys_cal!(
         # Initialize output files
         init_file_phys_cal!(data, ismp)
 
-        # VMC Sampling
+        # VMC Sampling. C wraps the real Slater copies and the sampling call in
+        # StartTimer(3)/StopTimer(3) (vmcmain.c:551-602).
+        ctimer_start!(timer, 3)
         if !all_complex  # real
             # CRITICAL: Copy SlaterElm to SlaterElm_real BEFORE VMCMakeSample_real
             # C: for(tmp_i=0;tmp_i<NQPFull*(2*Nsite)*(2*Nsite);tmp_i++) SlaterElm_real[tmp_i]= creal(SlaterElm[tmp_i]);
@@ -214,50 +216,58 @@ function vmc_phys_cal!(
 
             if i_flg_orbital_general == 0
                 if n_proj_bf == 0
-                    vmc_make_sample_real!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                    vmc_make_sample_real!(data, state, rng, timer; ctx = ctx)
                 else
                     vmc_bf_make_sample_real!(data, state, rng)
                 end
             else
-                vmc_make_sample_fsz_real!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                vmc_make_sample_fsz_real!(data, state, rng, timer; ctx = ctx)
             end
         else  # complex
             if n_proj_bf == 0
                 if i_flg_orbital_general == 0
-                    vmc_make_sample!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                    vmc_make_sample!(data, state, rng, timer; ctx = ctx)
                 else
-                    vmc_make_sample_fsz!(data, state, rng, CTIMER_DISABLED; ctx = ctx)
+                    vmc_make_sample_fsz!(data, state, rng, timer; ctx = ctx)
                 end
             else
                 vmc_bf_make_sample!(data, state, rng)
             end
         end
+        ctimer_stop!(timer, 3)
 
         # Main calculation (energy + Green's functions)
+        ctimer_start!(timer, 4)
         if n_proj_bf == 0
             if i_flg_orbital_general == 0
-                vmc_main_cal!(data, state, CTIMER_DISABLED, ctx)  # Will calculate Green's functions if mode=1
+                vmc_main_cal!(data, state, timer, ctx)  # Will calculate Green's functions if mode=1
             else
-                vmc_main_cal_fsz!(data, state, CTIMER_DISABLED, ctx)
+                vmc_main_cal_fsz!(data, state, timer, ctx)
             end
         else
             vmc_bf_main_cal!(data, state)
         end
+        ctimer_stop!(timer, 4)
 
-        # Weighted averages
+        # Weighted averages (C StartTimer(21)/StopTimer(21) spans WE, the Green
+        # average and ReduceCounter; vmcmain.c:618-624).
+        ctimer_start!(timer, 21)
         weight_average_we!(ctx, state)
         weight_average_green_func!(ctx, state)
 
         # Reduce counters (C ReduceCounter(comm_child2); serial is no-op)
         reduce_counter!(ctx, state)
+        ctimer_stop!(timer, 21)
 
         # Output data. Pass the 0-based sample counter; output_data_phys! drives
         # the energy/param write mode from it (first sample truncates) and numbers
         # the Green files with ismp + NDataIdxStart internally.
+        ctimer_start!(timer, 22)
         is_output_rank(ctx) && output_data_phys!(data, state, ismp; output_dir = output_dir)
 
         # Close files
         is_output_rank(ctx) && close_file_phys_cal!(data, ismp)
+        ctimer_stop!(timer, 22)
 
         # Callback
         if callback !== nothing
@@ -290,12 +300,10 @@ end
 Output physical quantity data to files. `ismp` is the 0-based sample index.
 Equivalent to C's `outputData()` in VMCPhysCal mode.
 
-The energy/parameter files (`zvo_out.dat` / `zvo_var.dat`) use `ismp` directly so
-the first sample (`ismp == 0`) truncates and later samples append, matching
-optimization-mode semantics (and so a re-run does not accumulate stale lines).
-Unlike C, these two files are not per-sample indexed; that parity is deferred to
-the fixture/e2e work. The Green files are numbered `ismp + NDataIdxStart`
-(`physcal_output_file_index`) to match C's per-sampling file index.
+All per-sampling files use the C-visible file index `XXX = ismp + NDataIdxStart`:
+the energy/parameter files (`zvo_out_XXX.dat` / `zvo_var_XXX.dat`) and the Green
+files. C `InitFilePhysCal` opens each sample's `zvo_out_XXX.dat` /
+`zvo_var_XXX.dat` with `"w"`, so every file holds exactly one sample.
 """
 function output_data_phys!(
     data::ExpertModeData,
@@ -303,13 +311,13 @@ function output_data_phys!(
     ismp::Int;
     output_dir::Union{String,Nothing} = nothing,
 )
-    # Output energy and parameters (same as optimization mode): the 0-based sample
-    # counter selects the write mode (ismp == 0 -> truncate, else append).
-    output_data!(data, state, ismp; output_dir = output_dir)
+    file_idx = physcal_output_file_index(data, ismp)
+
+    # Per-sample energy/parameter files, C-indexed and truncated (see data_io.jl).
+    output_data!(data, state, ismp; output_dir = output_dir, file_index = file_idx)
 
     # Output Green's functions, numbered with the C-visible per-sampling index.
     if state.phys_quantities !== nothing
-        file_idx = physcal_output_file_index(data, ismp)
         output_green_func!(data, state, file_idx; output_dir = output_dir)
     end
 end

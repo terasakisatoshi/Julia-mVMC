@@ -78,6 +78,7 @@ Single point of optimization data for averaging.
 """
 struct OptDataPoint
     energy::ComplexF64
+    energy_squared::ComplexF64
     parameters::Vector{ComplexF64}
 end
 
