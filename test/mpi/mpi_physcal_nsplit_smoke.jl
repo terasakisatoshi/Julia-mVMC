@@ -31,8 +31,8 @@ const refdir = joinpath(
 const src_inputs = joinpath(refdir, "inputs")
 const opt_para = joinpath(refdir, "zqp_opt.dat")
 const expected_files = (
-    "zvo_out.dat",
-    "zvo_var.dat",
+    "zvo_out_001.dat",
+    "zvo_var_001.dat",
     "zvo_cisajs_001.dat",
     "zvo_cisajscktalt_001.dat",
     "zvo_cisajscktaltex_001.dat",

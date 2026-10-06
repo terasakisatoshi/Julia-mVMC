@@ -35,9 +35,9 @@ C implementation: vmcmain.c:VMCPhysCal()
 - `info::Int`: Return code (0 = success, non-zero = error)
 
 # Output Files
-- `zvo_out.dat`: Energy (one line per sample, truncated on the first sample;
-  not per-sample indexed, unlike C — see `output_data_phys!`)
-- `zvo_var.dat`: Parameters (same convention as `zvo_out.dat`)
+- `zvo_out_XXX.dat`: Energy for sample `XXX = ismp + NDataIdxStart` (one line
+  per file, per-sample indexed like C `InitFilePhysCal`)
+- `zvo_var_XXX.dat`: Parameters (same per-sample indexing as `zvo_out_XXX.dat`)
 - `zvo_cisajs_XXX.dat`: 1-body Green's function (`XXX = ismp + NDataIdxStart`)
 - `zvo_cisajscktaltex_XXX.dat`: factored two-body Green (product / `TwoBodyGEx`)
 - `zvo_cisajscktalt_XXX.dat`: direct two-body Green (`TwoBodyG`)
@@ -313,12 +313,10 @@ end
 Output physical quantity data to files. `ismp` is the 0-based sample index.
 Equivalent to C's `outputData()` in VMCPhysCal mode.
 
-The energy/parameter files (`zvo_out.dat` / `zvo_var.dat`) use `ismp` directly so
-the first sample (`ismp == 0`) truncates and later samples append, matching
-optimization-mode semantics (and so a re-run does not accumulate stale lines).
-Unlike C, these two files are not per-sample indexed; that parity is deferred to
-the fixture/e2e work. The Green files are numbered `ismp + NDataIdxStart`
-(`physcal_output_file_index`) to match C's per-sampling file index.
+All per-sampling files use the C-visible file index `XXX = ismp + NDataIdxStart`:
+the energy/parameter files (`zvo_out_XXX.dat` / `zvo_var_XXX.dat`) and the Green
+files. C `InitFilePhysCal` opens each sample's `zvo_out_XXX.dat` /
+`zvo_var_XXX.dat` with `"w"`, so every file holds exactly one sample.
 """
 function output_data_phys!(
     data::ExpertModeData,
@@ -326,13 +324,13 @@ function output_data_phys!(
     ismp::Int;
     output_dir::Union{String,Nothing} = nothing,
 )
-    # Output energy and parameters (same as optimization mode): the 0-based sample
-    # counter selects the write mode (ismp == 0 -> truncate, else append).
-    output_data!(data, state, ismp; output_dir = output_dir)
+    file_idx = physcal_output_file_index(data, ismp)
+
+    # Per-sample energy/parameter files, C-indexed and truncated (see data_io.jl).
+    output_data!(data, state, ismp; output_dir = output_dir, file_index = file_idx)
 
     # Output Green's functions, numbered with the C-visible per-sampling index.
     if state.phys_quantities !== nothing
-        file_idx = physcal_output_file_index(data, ismp)
         output_green_func!(data, state, file_idx; output_dir = output_dir)
     end
 end

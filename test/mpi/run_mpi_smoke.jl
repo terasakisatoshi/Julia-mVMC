@@ -27,8 +27,8 @@ const para_opt_files = (
     "zvo_var.dat",
 )
 const physcal_files = (
-    "zvo_out.dat",
-    "zvo_var.dat",
+    "zvo_out_001.dat",
+    "zvo_var_001.dat",
     "zvo_cisajs_001.dat",
     "zvo_cisajscktalt_001.dat",
     "zvo_cisajscktaltex_001.dat",
@@ -121,8 +121,8 @@ function run_physcal_nsplit_case(
     @test count("$label root rank ok", out) == 1
     @test count("$label non-root rank ok", out) == nranks - 1
     return (
-        zvo = parse_numeric_file(joinpath(mpi_dir, "zvo_out.dat")),
-        var = parse_numeric_file(joinpath(mpi_dir, "zvo_var.dat")),
+        zvo = parse_numeric_file(joinpath(mpi_dir, "zvo_out_001.dat")),
+        var = parse_numeric_file(joinpath(mpi_dir, "zvo_var_001.dat")),
         cisajs = parse_numeric_file(joinpath(mpi_dir, "zvo_cisajs_001.dat")),
         two_body = parse_numeric_file(joinpath(mpi_dir, "zvo_cisajscktalt_001.dat")),
         factored = parse_numeric_file(joinpath(mpi_dir, "zvo_cisajscktaltex_001.dat")),

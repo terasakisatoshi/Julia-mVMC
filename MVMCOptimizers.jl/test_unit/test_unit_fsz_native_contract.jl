@@ -95,7 +95,7 @@ end
             @test length(callbacks) == 1
             @test MVMCOptimizers.pack_parameters(data) == fixed
             @test data.optimization_flags == flags
-            out = parse.(Float64, split(read(joinpath(output, "zvo_out.dat"), String)))
+            out = parse.(Float64, split(read(joinpath(output, "zvo_out_001.dat"), String)))
             @test length(out) == 6
             # H=2*n0up*n0down+2*n1up*n1down acts as 4 on full occupancy.
             # Normalized physical observables have unit scale, unlike the tiny

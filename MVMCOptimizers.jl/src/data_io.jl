@@ -33,16 +33,21 @@ function _output_path(filename::String, output_dir::Union{String,Nothing})
 end
 
 """
-    output_data!(data::ExpertModeData, state::VMCOptimizationState, step::Int; output_dir=nothing)
+    output_data!(data::ExpertModeData, state::VMCOptimizationState, step::Int;
+                 output_dir=nothing, file_index=nothing)
 
 Output data to files.
 Equivalent to C's `outputData()`.
 
-Outputs to zvo_out.dat and zvo_var.dat.
-Step 0 overwrites the files (new run); step >= 1 appends.
+With `file_index === nothing` (optimization) this writes the single
+`zvo_out.dat` / `zvo_var.dat` pair; step 0 overwrites and step >= 1 appends.
+With `file_index::Int` (PhysCal) it writes the C-indexed per-sample pair
+`zvo_out_<file_index:03d>.dat` / `zvo_var_<file_index:03d>.dat` and always
+truncates, matching C `InitFilePhysCal`, which opens each sample's file with
+`"w"` (`extern/mVMC-1.3.0/src/mVMC/initfile.c:79-90`).
 If `output_dir` is set, files are written under that directory (directory is created if needed).
 """
-function output_data!(data::ExpertModeData, state::VMCOptimizationState, step::Int; output_dir::Union{String,Nothing}=nothing)
+function output_data!(data::ExpertModeData, state::VMCOptimizationState, step::Int; output_dir::Union{String,Nothing}=nothing, file_index::Union{Nothing,Int}=nothing)
     # Get file head from parameters
     data_file_head = data.modpara.c_data_file_head
     if isempty(data_file_head)
@@ -66,11 +71,14 @@ function output_data!(data::ExpertModeData, state::VMCOptimizationState, step::I
     sztot = real(state.energy.sztot)
     sztot2 = real(state.energy.sztot2)
 
-    # Step 0: overwrite (new run). Step >= 1: append.
-    write_mode = step == 0 ? "w" : "a"
+    # C PhysCal writes one C-indexed file per sample and truncates it each time
+    # (InitFilePhysCal opens "%s_out_%03d.dat" with "w"). Optimization keeps the
+    # single non-indexed file with truncate-on-step-0/append semantics.
+    suffix = file_index === nothing ? "" : @sprintf("_%03d", file_index)
+    write_mode = file_index === nothing ? (step == 0 ? "w" : "a") : "w"
 
-    # Output to zvo_out.dat
-    out_file = _output_path(data_file_head * "_out.dat", output_dir)
+    # Output to zvo_out[_NNN].dat
+    out_file = _output_path(data_file_head * "_out" * suffix * ".dat", output_dir)
     open(out_file, write_mode) do f
         # C format: "% .18e % .18e  % .18e % .18e %.18e %.18e\n"
         @printf(
@@ -85,8 +93,8 @@ function output_data!(data::ExpertModeData, state::VMCOptimizationState, step::I
         )
     end
 
-    # Output to zvo_var.dat
-    var_file = _output_path(data_file_head * "_var.dat", output_dir)
+    # Output to zvo_var[_NNN].dat
+    var_file = _output_path(data_file_head * "_var" * suffix * ".dat", output_dir)
     open(var_file, write_mode) do f
         # C format: "% .18e % .18e 0.0 % .18e % .18e 0.0 " + parameters
         @printf(
