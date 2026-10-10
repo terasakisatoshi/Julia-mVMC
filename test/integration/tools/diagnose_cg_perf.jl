@@ -59,6 +59,7 @@ run("candidate_lapack")
 for file in ("ordinary_real_factor.jl","ordinary_real_inverse.jl","calculate_m_all.jl","vmc_sampling.jl","vmc_main_cal.jl")
     original=read(`git show 3254752e1acf7cfe6f5069522889814a8cace90d:MVMCOptimizers.jl/src/$file`,String)
     original=replace(original,r"(?m)^include\([^\n]+\)$"=>"nothing")
+    original=replace(original,"@enum UpdateType HOPPING EXCHANGE LOCALSPINFLIP NONE"=>"nothing")
     Base.include_string(MVMCOptimizers,original,"baseline-"*file)
 end
 run("baseline")
