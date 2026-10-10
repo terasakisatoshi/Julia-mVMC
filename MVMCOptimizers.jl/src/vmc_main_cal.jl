@@ -1689,49 +1689,45 @@ function _calculate_hamiltonian1_real_fast_threaded!(
     n_site2 = data.modpara.nsite * 2
     n_proj = length(ele_proj_cnt)
     n_qp_full = get_n_qp_full(data)
-    _ensure_calham1_thread_scratch!(
-        scratch,
-        n_threads,
-        n_size,
-        n_site2,
-        n_proj,
-        n_qp_full,
-    )
-
+    _ensure_calham1_thread_scratch!(scratch,n_threads,n_size,n_site2,n_proj,n_qp_full)
     @inbounds for tid = 1:n_threads
-        copyto!(scratch.calh1_thread_ele_idx[tid], ele_idx)
-        copyto!(scratch.calh1_thread_ele_num[tid], ele_num)
-        scratch.calh1_thread_acc[tid] = 0.0
+        copyto!(scratch.calh1_thread_ele_idx[tid],ele_idx)
+        copyto!(scratch.calh1_thread_ele_num[tid],ele_num)
+        scratch.calh1_thread_acc[tid]=0.0
     end
-
-    Base.Threads.@threads :static for k = 1:n_terms
-        tid = Base.Threads.threadid()
-        local_ele_idx = scratch.calh1_thread_ele_idx[tid]
-        local_ele_num = scratch.calh1_thread_ele_num[tid]
-        green = green_func1_real_value!(
-            scratch.calh1_transfer_ri[k],
-            scratch.calh1_transfer_rj[k],
-            scratch.calh1_transfer_spin[k],
-            ip_real,
-            local_ele_idx,
-            ele_cfg,
-            local_ele_num,
-            ele_proj_cnt,
-            data,
-            state,
-            scratch.calh1_thread_proj_cnt_new[tid],
-            scratch.calh1_thread_pf_m_new_real[tid],
-            CTIMER_DISABLED,
-            direct_projection,
-            true,
-            scratch,
-        )
-        @inbounds scratch.calh1_thread_acc[tid] -= scratch.calh1_transfer_value[k] * green
+    @inline function process_term!(k,tid)
+        local_ele_idx=scratch.calh1_thread_ele_idx[tid]
+        local_ele_num=scratch.calh1_thread_ele_num[tid]
+        green=green_func1_real_value!(scratch.calh1_transfer_ri[k],
+            scratch.calh1_transfer_rj[k],scratch.calh1_transfer_spin[k],ip_real,
+            local_ele_idx,ele_cfg,local_ele_num,ele_proj_cnt,data,state,
+            scratch.calh1_thread_proj_cnt_new[tid],scratch.calh1_thread_pf_m_new_real[tid],
+            CTIMER_DISABLED,direct_projection,true,scratch)
+        @inbounds scratch.calh1_thread_acc[tid]-=scratch.calh1_transfer_value[k]*green
     end
-
-    energy = 0.0
-    @inbounds for tid = 1:n_threads
-        energy += scratch.calh1_thread_acc[tid]
+    if n_terms*n_qp_full*n_size >= 65536
+        Base.Threads.@threads :static for k = 1:n_terms
+            process_term!(k,Base.Threads.threadid())
+        end
+    else
+        # Execute exactly the static scheduler's contiguous chunks and then
+        # the same ascending-worker reduction. This saves task dispatch for
+        # cheap transfers without changing Hamiltonian addition grouping.
+        workers=Base.Threads.nthreads()
+        tid_offset=Base.Threads.nthreads(:interactive)
+        chunk,remainder=divrem(n_terms,workers)
+        first_term=1
+        for worker in 1:workers
+            last_term=first_term+chunk+(worker<=remainder)-1
+            for k in first_term:last_term
+                process_term!(k,tid_offset+worker)
+            end
+            first_term=last_term+1
+        end
+    end
+    energy=0.0
+    @inbounds for tid=1:n_threads
+        energy+=scratch.calh1_thread_acc[tid]
     end
     return energy
 end
@@ -1753,6 +1749,8 @@ function calculate_hamiltonian1_real_fast!(
     n_terms == 0 && return 0.0
     direct_projection = _prepare_calh1_direct_projection_cache!(scratch, data, diag_timer)
 
+    # Direct projection makes small transfer loops cheaper than task dispatch.
+    # Estimate the QP-by-electron work, rather than transfer count alone.
     use_threads =
         !ctimer_enabled(diag_timer) &&
         vmc_inner_threading_enabled(n_terms, threaded; min_work_per_thread = 16)
@@ -2348,7 +2346,7 @@ end
     ele_idx::Vector{Int},
     data::ExpertModeData,
     state::VMCOptimizationState,
-    inv_m_flat::Vector{ComplexF64},
+    inv_m_flat::Union{Vector{ComplexF64},Vector{Float64}},
     sp_gl_cos_sin::Vector{ComplexF64},
     sp_gl_cos_cos::Vector{ComplexF64},
     sp_gl_sin_sin::Vector{ComplexF64},
@@ -2458,11 +2456,11 @@ function _build_slater_trans_orb_fcmp_fast!(
     return nothing
 end
 
-function _accumulate_slater_buffer_fcmp_fast!(
+function _accumulate_slater_buffer_fcmp_range!(
     buffer::Vector{ComplexF64},
     trans_orb_idx::Vector{Int},
     trans_orb_sgn::Vector{Int},
-    inv_m_flat::Vector{ComplexF64},
+    inv_m_flat::Union{Vector{ComplexF64},Vector{Float64}},
     pf_m::Vector{ComplexF64},
     sp_gl_cos_sin::Vector{ComplexF64},
     sp_gl_cos_cos::Vector{ComplexF64},
@@ -2473,8 +2471,10 @@ function _accumulate_slater_buffer_fcmp_fast!(
     n_qp_full::Int,
     n_sp_gauss_leg::Int,
     n_slater::Int,
+    qp_start::Int,
+    qp_end::Int,
 )
-    @inbounds for qpidx = 0:(n_qp_full-1)
+    @inbounds for qpidx = qp_start:(qp_end-1)
         mpidx = qpidx ÷ n_sp_gauss_leg
         spidx = qpidx % n_sp_gauss_leg
         cs = pf_m[qpidx+1] * sp_gl_cos_sin[spidx+1]
@@ -2494,13 +2494,13 @@ function _accumulate_slater_buffer_fcmp_fast!(
             for msj = 0:(n_elec-1)
                 orbidx = trans_orb_idx[t_orb_idx_i+msj+1]
                 sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
-                buffer[buf_base+orbidx+1] += (inv_m_flat[inv_i+msj+1] * cs) * sgn
+                buffer[buf_base+orbidx+1] += (ComplexF64(inv_m_flat[inv_i+msj+1]) * cs) * sgn
             end
 
             for msj = n_elec:(n_size-1)
                 orbidx = trans_orb_idx[t_orb_idx_i+msj+1]
                 sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
-                buffer[buf_base+orbidx+1] -= (inv_m_flat[inv_i+msj+1] * cc) * sgn
+                buffer[buf_base+orbidx+1] -= (ComplexF64(inv_m_flat[inv_i+msj+1]) * cc) * sgn
             end
         end
 
@@ -2512,13 +2512,13 @@ function _accumulate_slater_buffer_fcmp_fast!(
             for msj = 0:(n_elec-1)
                 orbidx = trans_orb_idx[t_orb_idx_i+msj+1]
                 sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
-                buffer[buf_base+orbidx+1] += (inv_m_flat[inv_i+msj+1] * ss) * sgn
+                buffer[buf_base+orbidx+1] += (ComplexF64(inv_m_flat[inv_i+msj+1]) * ss) * sgn
             end
 
             for msj = n_elec:(n_size-1)
                 orbidx = trans_orb_idx[t_orb_idx_i+msj+1]
                 sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
-                buffer[buf_base+orbidx+1] -= (inv_m_flat[inv_i+msj+1] * cs) * sgn
+                buffer[buf_base+orbidx+1] -= (ComplexF64(inv_m_flat[inv_i+msj+1]) * cs) * sgn
             end
         end
     end
@@ -2563,7 +2563,8 @@ function slater_elm_diff_fcmp!(
     data::ExpertModeData,
     state::VMCOptimizationState,
     scratch::Union{Nothing,VMCMainCalScratch} = nothing,
-    diag_timer::CTimer = CTIMER_DISABLED,
+    diag_timer::CTimer = CTIMER_DISABLED;
+    real_inverse::Bool = false,
 )
     n_site = data.modpara.nsite
     n_elec = data.modpara.nelec
@@ -2592,7 +2593,7 @@ function slater_elm_diff_fcmp!(
 
     # Get inverse matrix view
     n_size_sq = n_size * n_size
-    inv_m_flat::Vector{ComplexF64} = state.slater_matrix.inv_m
+    inv_m_flat = real_inverse ? state.slater_matrix.inv_m_real : state.slater_matrix.inv_m
 
     # Check if QPTrans is available
     if isempty(data.qp_trans) || isempty(data.qp_trans_sgn)
@@ -2804,7 +2805,7 @@ function slater_elm_diff_fcmp!(
                         sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
                         # C: InvM[msi][msj] = InvM[msi*n_size + msj]
                         inv_idx = inv_m_base + msi * n_size + msj + 1
-                        buffer[qpidx*n_slater+orbidx+1] += (inv_m_flat[inv_idx] * cs) * sgn
+                        buffer[qpidx*n_slater+orbidx+1] += (ComplexF64(inv_m_flat[inv_idx]) * cs) * sgn
                     end
                 end
 
@@ -2813,7 +2814,7 @@ function slater_elm_diff_fcmp!(
                     if orbidx >= 0 && orbidx < n_slater
                         sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
                         inv_idx = inv_m_base + msi * n_size + msj + 1
-                        buffer[qpidx*n_slater+orbidx+1] -= (inv_m_flat[inv_idx] * cc) * sgn
+                        buffer[qpidx*n_slater+orbidx+1] -= (ComplexF64(inv_m_flat[inv_idx]) * cc) * sgn
                     end
                 end
             end
@@ -2827,7 +2828,7 @@ function slater_elm_diff_fcmp!(
                     if orbidx >= 0 && orbidx < n_slater
                         sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
                         inv_idx = inv_m_base + msi * n_size + msj + 1
-                        buffer[qpidx*n_slater+orbidx+1] += (inv_m_flat[inv_idx] * ss) * sgn
+                        buffer[qpidx*n_slater+orbidx+1] += (ComplexF64(inv_m_flat[inv_idx]) * ss) * sgn
                     end
                 end
 
@@ -2836,7 +2837,7 @@ function slater_elm_diff_fcmp!(
                     if orbidx >= 0 && orbidx < n_slater
                         sgn = trans_orb_sgn[t_orb_sgn_i+msj+1]
                         inv_idx = inv_m_base + msi * n_size + msj + 1
-                        buffer[qpidx*n_slater+orbidx+1] -= (inv_m_flat[inv_idx] * cs) * sgn
+                        buffer[qpidx*n_slater+orbidx+1] -= (ComplexF64(inv_m_flat[inv_idx]) * cs) * sgn
                     end
                 end
             end
@@ -3923,12 +3924,16 @@ function vmc_main_cal!(
                 # C does: for(tmp_i=0;tmp_i<NQPFull*(Nsize*Nsize+1);tmp_i++) InvM[tmp_i]=InvM_real[tmp_i];
                 # which copies both InvM_real and PfM_real (since PfM = InvM + NQPFull*Nsize*Nsize)
                 n_size_sq = n_size * n_size
-                copy_real_to_complex!(
-                    worker_state.slater_matrix.inv_m,
-                    worker_state.slater_matrix.inv_m_real,
-                    n_qp_full * n_size_sq;
-                    threaded = allow_inner_threads,
-                )
+                # Opt derivatives promote each loaded real entry in registers;
+                # PhysCal retains complex storage for its Green-function paths.
+                if nvmc_cal_mode != 0
+                    copy_real_to_complex!(
+                        worker_state.slater_matrix.inv_m,
+                        worker_state.slater_matrix.inv_m_real,
+                        n_qp_full * n_size_sq;
+                        threaded = allow_inner_threads,
+                    )
+                end
                 # Also copy pf_m_real to pf_m (needed for SlaterElmDiff_fcmp)
                 # In C, PfM and InvM are contiguous, so the above copy covers both
                 # In Julia, they are separate arrays, so we need explicit copy
@@ -4186,7 +4191,8 @@ function vmc_main_cal!(
                         data,
                         worker_state,
                         sample_scratch,
-                        slater_diag_timer,
+                        slater_diag_timer;
+                        real_inverse = !all_complex,
                     )
                     ctimer_stop!(slater_diag_timer, 930)
                     ctimer_stop!(c_timer, 42)
@@ -4263,6 +4269,18 @@ function vmc_main_cal!(
             end
         end
 
+        # Keep the externally visible complex cache synchronized to the final
+        # sample, while real Opt derivatives avoid copying it for every sample.
+        if !all_complex && nvmc_cal_mode == 0 && !isempty(sample_range)
+            ctimer_start!(c_timer, 40)
+            copy_real_to_complex!(
+                worker_state.slater_matrix.inv_m,
+                worker_state.slater_matrix.inv_m_real,
+                n_qp_full * n_size * n_size;
+                threaded = allow_inner_threads,
+            )
+            ctimer_stop!(c_timer, 40)
+        end
         return nothing
     end
 
@@ -4630,4 +4648,48 @@ an error. Inputs that drive `n_proj_bf > 0` should not be passed to v0.1.
 function vmc_bf_main_cal!(::ExpertModeData, ::VMCOptimizationState)
     error("BackFlow is not supported in Julia-mVMC v0.1. Remove BackFlow keywords from namelist.def, " *
           "or fall back to the C reference at https://github.com/issp-center-dev/mVMC.")
+end
+
+# Each QP plane owns a disjoint buffer slice. Preserve its scatter order and the
+# final ascending QP fold. Nested or worker callers use the serial path.
+function _accumulate_slater_buffer_fcmp_fast!(
+    buffer::Vector{ComplexF64},
+    trans_orb_idx::Vector{Int},
+    trans_orb_sgn::Vector{Int},
+    inv_m_flat::Union{Vector{ComplexF64},Vector{Float64}},
+    pf_m::Vector{ComplexF64},
+    sp_gl_cos_sin::Vector{ComplexF64},
+    sp_gl_cos_cos::Vector{ComplexF64},
+    sp_gl_sin_sin::Vector{ComplexF64},
+    n_elec::Int,
+    n_size::Int,
+    n_size_sq::Int,
+    n_qp_full::Int,
+    n_sp_gauss_leg::Int,
+    n_slater::Int,
+)
+    workers = Threads.nthreads()
+    parallel = vmc_inner_threading_requested(true) && n_qp_full >= workers &&
+        n_qp_full * n_size_sq >= 32768 && Threads.threadid() == 1 &&
+        ccall(:jl_in_threaded_region, Cint, ()) == 0
+    if parallel
+        Threads.@threads :static for slot in 1:workers
+            first_qp = ((slot - 1) * n_qp_full) ÷ workers
+            last_qp = (slot * n_qp_full) ÷ workers
+            _accumulate_slater_buffer_fcmp_range!(
+                buffer, trans_orb_idx, trans_orb_sgn, inv_m_flat, pf_m,
+                sp_gl_cos_sin, sp_gl_cos_cos, sp_gl_sin_sin,
+                n_elec, n_size, n_size_sq, n_qp_full, n_sp_gauss_leg, n_slater,
+                first_qp, last_qp,
+            )
+        end
+    else
+        _accumulate_slater_buffer_fcmp_range!(
+            buffer, trans_orb_idx, trans_orb_sgn, inv_m_flat, pf_m,
+            sp_gl_cos_sin, sp_gl_cos_cos, sp_gl_sin_sin,
+            n_elec, n_size, n_size_sq, n_qp_full, n_sp_gauss_leg, n_slater,
+            0, n_qp_full,
+        )
+    end
+    return nothing
 end

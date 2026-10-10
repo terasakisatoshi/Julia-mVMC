@@ -120,7 +120,7 @@ mutable struct ThreadedPfaPackWorkspace
     """
     function ThreadedPfaPackWorkspace(n_size::Int; complex_only::Bool=false, real_only::Bool=false)
         # Pre-allocate for current number of threads, but can grow dynamically
-        n_threads = max(nthreads(), 1)
+        n_threads = max(Base.Threads.maxthreadid(), 1)
         workspaces = [PfaPackWorkspace(n_size; complex_only=complex_only, real_only=real_only) for _ in 1:n_threads]
         new(workspaces, n_size, complex_only, real_only, ReentrantLock())
     end
@@ -156,7 +156,7 @@ Ensure the workspace has capacity for all current threads.
 Call this at the beginning of parallel regions to avoid lock contention.
 """
 function ensure_thread_capacity!(tws::ThreadedPfaPackWorkspace)
-    n_threads = nthreads()
+    n_threads = Base.Threads.maxthreadid()
     if length(tws.workspaces) < n_threads
         lock(tws.lock) do
             while length(tws.workspaces) < n_threads

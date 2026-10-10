@@ -4982,7 +4982,12 @@ function calculate_m_all_real!(
     # Call PfaPack's calculate_m_all_real!
     # Note: We use the imported function from PfaPack
     # PfaPack expects n_elec to be total number of electrons (2*Ne), not Ne
-    pfapack_workspace = vmc_pfapack_threading_requested(threaded) ?
+    # Ordinary real QPs use the private C-order Julia factor/inverse,
+    # with disjoint output slices and private worker scratch. Their threading
+    # follows the inner-kernel policy, independently of the native complex
+    # PfaPack opt-in. Small matrices keep the serial path.
+    pfapack_workspace = vmc_inner_threading_requested(threaded) &&
+        qp_num * n_size^3 >= 131072 ?
         ws.pfapack_workspace :
         ws.pfapack_workspace.workspaces[1]
     info = with_pfapack_call_lock() do
@@ -5634,7 +5639,9 @@ function update_m_all_real!(
             rsj = msj < n_elec ? ele_idx[msj+1] : (ele_idx[msj+1] + n_site)
             slt_e_aj = slater_elm_real[slt_offset+rsa*n_site2+rsj+1]
 
-            for msi = 0:(n_size-1)
+            # Scratch vectors and InvM are disjoint workspace allocations.
+            # Vectorize independent i entries while keeping the outer j sum order.
+            @simd ivdep for msi = 0:(n_size-1)
                 # invM_j[msi] = invM[msi][msj] stored at inv_offset + msj*n_size + msi
                 # But C stores row-major: invM[j][i] at invM + j*Nsize + i
                 inv_m_ji = inv_m_real[inv_offset+msj*n_size+msi+1]
@@ -5661,7 +5668,7 @@ function update_m_all_real!(
             vec1_i = vec1[msi+1]
             vec2_i = vec2[msi+1]
 
-            for msj = 0:(n_size-1)
+            @simd ivdep for msj = 0:(n_size-1)
                 inv_m_real[inv_offset+msi*n_size+msj+1] +=
                     vec1_i * vec2[msj+1] - vec1[msj+1] * vec2_i
             end
@@ -6008,7 +6015,7 @@ function vmc_make_sample_real!(
     retry_count = 0
     info = 1
     while info != 0 && retry_count < max_retries
-        info = calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state)
+        info = calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state; threaded=true)
         info = _comm1_max_status(ctx, info)
         if info != 0
             # Regenerate sample if Pfaffian calculation fails
@@ -6063,7 +6070,7 @@ function vmc_make_sample_real!(
         if info != 0
             return
         end
-        info = calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state)
+        info = calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state; threaded=true)
         info = _comm1_max_status(ctx, info)
         if info != 0
             return
@@ -6370,7 +6377,7 @@ function vmc_make_sample_real!(
             # [34] recal PfM and InvM: periodic full recompute + logIP update
             if n_accept > n_site
                 ctimer_start!(c_timer, 34)
-                result = calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state)
+                result = calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state; threaded=true)
                 result = _comm1_max_status(ctx, result)
                 if result == 0
                     log_ip_old = calculate_log_ip_real(
