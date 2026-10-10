@@ -45,7 +45,7 @@ function run(label_value)
     install_observer!()
     root=normpath(joinpath(@__DIR__,"..","reference","heisenberg_chain_real_nsrcg"))
     output=mktempdir()
-    result=MVMCOptimizers.run_para_opt_from_namelist(joinpath(root,"inputs","namelist.def");nsteps=1,nsmp=1,mode=:real,output_dir=output)
+    result=Base.invokelatest(MVMCOptimizers.run_para_opt_from_namelist,joinpath(root,"inputs","namelist.def");nsteps=1,nsmp=1,mode=:real,output_dir=output)
     @assert result.status==0
     captured[label_value*":parameters"]=Dict("values"=>parse.(Float64,split(read(joinpath(output,"zqp_opt.dat"),String))))
 end
