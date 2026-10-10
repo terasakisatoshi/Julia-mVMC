@@ -1,4 +1,8 @@
-# Julia real-QP dispatch investigation
+# Historical ungated real-QP dispatch investigation
+
+**This initial candidate is superseded.** Its L32 PhysCal regression prevented
+adoption. See [WORK_GATE.md](WORK_GATE.md) for the calibrated gate and subsequent
+validation. The timings below belong to ungated commit `e86730a`.
 
 Related to [mvmc-rs issue #496](https://github.com/AtelierArith/mvmc-rs/issues/496). The prior SR-store milestone is upstream Julia PR #77,
 merged as `d493f113ecc009d44e70327ffcbb500a566a1380`.

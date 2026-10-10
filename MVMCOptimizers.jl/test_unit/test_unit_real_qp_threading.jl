@@ -152,12 +152,23 @@ end
     end
 end
 
-@testset "Real QPs use available workers below pool capacity" begin
-    for qps in (2, 3, 8)
-        n=4; indices=[0,1,0,1]
+@testset "Real QP partial pools require sufficient matrix work" begin
+    # Explicit pool-size boundaries for these matrix/QP counts. Integer pivot
+    # sentinels distinguish actual worker execution from a requested capacity.
+    cases=((32,2,2),(32,3,3),(32,8,8),
+           (48,2,6),(48,3,10),(48,8,27),
+           (64,2,16),(64,3,24),(64,8,64))
+    for (n,qps,last_parallel_pool_size) in cases
+        indices=vcat(collect(0:n÷2-1),collect(0:n÷2-1))
         slater=Float64[]
         for q in 1:qps
-            A=[0.0 2+q/16 .125 0; -(2+q/16) 0 0 -.125; -.125 0 0 3+q/16; 0 .125 -(3+q/16) 0]
+            A=zeros(n,n)
+            # Dense matrix avoids zero intermediate columns: C DSKTF2 normal
+            # mode reports INFO>0 for those even if a block Pfaffian is nonzero.
+            for j in 2:n, i in 1:j-1
+                A[i,j]=isodd(i) && j==i+1 ? 2+q/16 : (i-j+q)/1024
+                A[j,i]=-A[i,j]
+            end
             append!(slater,vec(permutedims(A)))
         end
         workspace=MVMCOptimizers.ThreadedPfaPackWorkspace(n;real_only=true)
@@ -166,11 +177,9 @@ end
         end
         inverse=zeros(n,n,qps); pfaffian=zeros(qps)
         @test MVMCOptimizers.calculate_m_all_real!(
-            indices,slater,inverse,pfaffian,1,qps+1,2,n,workspace)==0
-        # Every used scratch receives valid one-based integer pivots. Unused
-        # workers retain the sentinel, so this proves actual kernel execution
-        # rather than merely checking the requested pool capacity.
+            indices,slater,inverse,pfaffian,1,qps+1,n÷2,n,workspace)==0
         used=count(scratch->all(>(0),scratch.iwork),workspace.workspaces)
-        @test used==min(qps,Threads.nthreads())
+        expected=Threads.nthreads()<=last_parallel_pool_size ? min(qps,Threads.nthreads()) : 1
+        @test used==expected
     end
 end
