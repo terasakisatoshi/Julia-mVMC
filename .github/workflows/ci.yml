@@ -18,8 +18,9 @@ jobs:
       # CI runs the smoke-test step counts; release-gate sweeps (50 SR steps)
       # are run locally before tagging.
       JULIA_MVMC_EXAMPLE_STEPS: "5"
-      # Keep worker IDs in the default pool, including Julia 1.13's two-thread run.
-      JULIA_NUM_THREADS: "1,0"
+      # A single thread keeps the interactive pool empty; the plain spelling
+      # also works with Julia 1.11 Pkg.test's generated --threads argument.
+      JULIA_NUM_THREADS: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -82,7 +83,7 @@ jobs:
       - name: Run MPI smoke and failure-mode tests
         if: ${{ matrix.os == 'ubuntu-latest' && (matrix.julia-version == '1.12' || matrix.julia-version == '1.13') }}
         run: |
-          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=1,0 julia --project=@. test/mpi/run_mpi_smoke.jl
+          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=1 julia --project=@. test/mpi/run_mpi_smoke.jl
 
       - name: Run threading default C-parity guard
         if: ${{ matrix.os == 'ubuntu-latest' && (matrix.julia-version == '1.12' || matrix.julia-version == '1.13') }}
