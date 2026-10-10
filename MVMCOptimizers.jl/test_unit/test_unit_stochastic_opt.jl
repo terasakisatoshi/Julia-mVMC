@@ -1,4 +1,5 @@
 using Test
+using Random
 using MVMCOptimizers
 using MVMCExpertModeParsers
 using MVMCExpertModeParsers:
@@ -464,4 +465,44 @@ end
 
     @test g[1] ≈ -0.17 atol = 1e-12     # -0.1*(2.3 - 1.2*0.5)
     @test g[2] ≈ 0.046 atol = 1e-12     # -0.1*(-0.7 - 1.2*(-0.2))
+end
+
+@testset "unit/stochastic_opt: batch deltas preserve scalar update semantics" begin
+    rng = MersenneTwister(73)
+    for mode in (:all, :projection_only, :repeated_components)
+        reference = make_mock_data_for_stochastic_opt_tests()
+        reference.n_gutzwiller_idx = 3 # includes two retained, unmapped slots
+        reference.doublon_holon_2site_indices = [DoublonHolon2SiteIndex(zeros(Int,4,2))]
+        reference.doublon_holon_2site_params = ComplexF64[1,2,3,4,5,6]
+        reference.doublon_holon_4site_indices = [DoublonHolon4SiteIndex(zeros(Int,4,4))]
+        reference.doublon_holon_4site_params = ComplexF64[1,2,3,4,5,6,7,8,9,10]
+        reference.opt_trans = ComplexF64[0.125,0.25]
+        reference.qp_weights = MVMCExpertModeParsers.QuantumProjectionWeights()
+        reference.qp_weights.qp_fix_weight = ComplexF64[2]
+        MVMCExpertModeParsers.update_qp_weight!(reference.qp_weights,reference.opt_trans)
+        MVMCOptimizers.update_parameter_value(reference,2,0.5,-0.25)
+        candidate = deepcopy(reference)
+        n = MVMCOptimizers.count_total_parameters(reference)
+        indices = mode == :projection_only ? collect(0:3) : shuffle(rng, collect(0:2n-1))
+        mode == :repeated_components && append!(indices, [0,1,0,1])
+        deltas = [0.125 * (mod(i,7)-3) for i in eachindex(indices)]
+        for (pi, delta) in zip(indices, deltas)
+            MVMCOptimizers.update_parameter_value(reference, div(pi,2)+1,
+                iseven(pi) ? delta : 0.0, isodd(pi) ? delta : 0.0)
+        end
+        MVMCOptimizers._apply_sr_parameter_deltas!(candidate, indices, deltas)
+        @test MVMCOptimizers.pack_parameters(candidate) ≈ MVMCOptimizers.pack_parameters(reference) atol=1e-14 rtol=1e-14
+        # Compare every duplicate, including deliberately unequal fixed terms:
+        # a batch must not repair untouched duplicates as a side effect.
+        for name in (:orbital_terms,:gutzwiller_terms,:jastrow_terms,
+                     :charge_rbm_phys_layer_terms,:spin_rbm_phys_layer_terms,:general_rbm_phys_layer_terms,
+                     :charge_rbm_hidden_layer_terms,:spin_rbm_hidden_layer_terms,:general_rbm_hidden_layer_terms,
+                     :charge_rbm_phys_hidden_terms,:spin_rbm_phys_hidden_terms,:general_rbm_phys_hidden_terms)
+            @test [t.value for t in getfield(candidate,name)] ≈ [t.value for t in getfield(reference,name)] atol=1e-14 rtol=1e-14
+        end
+        for name in (:doublon_holon_2site_params,:doublon_holon_4site_params,:opt_trans)
+            @test getfield(candidate,name) ≈ getfield(reference,name) atol=1e-14 rtol=1e-14
+        end
+        @test candidate.qp_weights.qp_full_weight ≈ reference.qp_weights.qp_full_weight atol=1e-14 rtol=1e-14
+    end
 end

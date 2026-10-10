@@ -9,6 +9,26 @@ function ordinary_real_fixture_pairs(path, count)
 end
 
 @testset "Ordinary real private C direct inverse" begin
+    # Independent solve/residual checks exercise small even dimensions,
+    # strided views and repeated scratch use without a Rust-generated oracle.
+    for n in (2,4,6,8,16)
+        vt = fill(2.0,n-1)
+        T = diagm(-1 => vt, 1 => -vt)
+        B = [Float64(i-j)/8 for i in 1:n, j in 1:n]
+        parent = fill(-91.0,n+2,n+2)
+        C = view(parent,2:n+1,2:n+1)
+        reference = T \ B
+        for reuse in 1:2
+            MVMCOptimizers._ordinary_sktdsmx_real_c_order!(n,vt,B,C)
+            @test all(abs(a-e) <= 256eps(Float64)*(1+abs(e)) for (a,e) in zip(C,reference))
+            @test opnorm(T*C-B,Inf) <= 256eps(Float64)*(opnorm(T,Inf)*opnorm(C,Inf)+opnorm(B,Inf))
+            @test all(==(-91.0),parent[[1,n+2],:]) && all(==(-91.0),parent[:,[1,n+2]])
+        end
+    end
+    alias = ones(2,2)
+    MVMCOptimizers._ordinary_sktdsmx_real_c_order!(2,[2.0],alias,alias)
+    @test alias ≈ [-0.25 -0.25; -0.5 -0.5] atol=1e-14 rtol=1e-14
+
     # Analytic tridiagonal system: all four C branches, exact dyadic operands.
     vt = [2.0,1.0,4.0]
     B = Matrix{Float64}(I,4,4)

@@ -288,6 +288,35 @@ function update_parameter_value(
     return nothing
 end
 
+function _apply_sr_parameter_deltas!(data::ExpertModeData, indices, deltas)
+    isempty(indices) && return nothing
+    counts = _parameter_count_breakdown(data)
+    para = pack_parameters(data)
+    changed = falses(counts.n_para)
+    # Keep the original update order, including separate real/imaginary adds.
+    # Flatten and scan duplicate locations once instead of rebuilding every
+    # family layout and searching all orbital terms for every SR component.
+    for (si, pi) in enumerate(indices)
+        para_idx = div(pi, 2) + 1
+        1 <= para_idx <= counts.n_para || continue
+        delta = iseven(pi) ? ComplexF64(deltas[si], 0.0) : ComplexF64(0.0, deltas[si])
+        para[para_idx] += delta
+        changed[para_idx] = true
+    end
+    MVMCExpertModeParsers.retain_flat_parameters!(data, para)
+    touched_opt_trans = Ref(false)
+    _foreach_parameter_location(data, counts) do para_idx, loc
+        if changed[para_idx]
+            _set_parameter_location_value!(data, loc, para[para_idx])
+            touched_opt_trans[] |= loc.kind == _PARAM_OPTTRANS
+        end
+    end
+    if touched_opt_trans[] && data.qp_weights !== nothing
+        MVMCExpertModeParsers.update_qp_weight!(data.qp_weights, data.opt_trans)
+    end
+    return nothing
+end
+
 """
     build_s_matrix_and_g_vector!(
         S::Matrix{Float64},
@@ -555,17 +584,7 @@ function stochastic_opt!(data::ExpertModeData, state::VMCOptimizationState, c_ti
     # Note: g[si] contains the solution r[si] after potrs! (g is overwritten)
     # The g vector already contains -DSROptStepDt*2.0*... from build_s_matrix_and_g_vector!
     if info == 0
-        for (si, pi) in enumerate(smat_to_para_idx)
-            r_val = g[si]  # Solution vector (g was overwritten by potrs!)
-
-            if pi % 2 == 0  # Real part
-                para_idx = div(pi, 2) + 1  # 1-based
-                update_parameter_value(data, para_idx, r_val, 0.0)
-            else  # Imaginary part
-                para_idx = div(pi - 1, 2) + 1  # 1-based
-                update_parameter_value(data, para_idx, 0.0, r_val)
-            end
-        end
+        _apply_sr_parameter_deltas!(data, smat_to_para_idx, g)
     end
     ctimer_stop!(c_timer, 52)
 

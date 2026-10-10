@@ -205,7 +205,9 @@ function update_slater_elm_fcmp!(data::ExpertModeData, state::VMCOptimizationSta
         return
     end
 
-    weights = data.qp_weights
+    # ExpertModeData stores this late-defined type as Any. Resolve it once,
+    # before the site-pair loop, so each scalar operation stays unboxed.
+    weights = data.qp_weights::MVMCExpertModeParsers.QuantumProjectionWeights
     if length(weights.spgl_cos) < n_sp_gauss_leg
         @error "Quantum projection weights have insufficient spin projection data."
         return
