@@ -70,50 +70,76 @@ function retain_flat_parameters!(data::ExpertModeData, values)
     return nothing
 end
 
-function gather_retained_parameters!(data::ExpertModeData)
-    for (name, width) in declared_parameter_families(data)
-        values = retained_family!(data, name, width)
-        if name in RETAINED_RBM_FAMILIES || name == :slater
-            terms = name == :slater ? data.orbital_terms : getfield(data, name)
-            for term in terms
-                0 <= term.idx < width && (values[term.idx + 1] = term.value)
-            end
-        else
-            source = name == :gutzwiller ? data.gutzwiller_terms :
-                name == :jastrow ? data.jastrow_terms :
-                name == :dh2 ? data.doublon_holon_2site_params :
-                name == :dh4 ? data.doublon_holon_4site_params : data.opt_trans
-            for i in 1:min(width, length(source))
-                values[i] = name in (:gutzwiller, :jastrow) ? source[i].value : source[i]
-            end
-        end
+# Typed barriers keep dynamically selected families out of scalar loops.
+@noinline function _retained_gather_indexed!(values, terms, width)
+    for term in terms
+        0 <= term.idx < width && (values[term.idx + 1] = term.value)
     end
-    return data
 end
-
-function scatter_retained_parameters!(data::ExpertModeData)
-    for (name, width) in declared_parameter_families(data)
-        values = retained_family!(data, name, width)
-        if name in RETAINED_RBM_FAMILIES || name == :slater
-            terms = name == :slater ? data.orbital_terms : getfield(data, name)
-            for term in terms
-                0 <= term.idx < width && (term.value = values[term.idx + 1])
-            end
+@noinline function _retained_scatter_indexed!(values, terms, width)
+    for term in terms
+        0 <= term.idx < width && (term.value = values[term.idx + 1])
+    end
+end
+@noinline function _retained_gather_dense_terms!(values, source, width)
+    for i in 1:min(width,length(source))
+        values[i] = source[i].value
+    end
+end
+@noinline function _retained_gather_dense_values!(values, source, width)
+    for i in 1:min(width,length(source))
+        values[i] = source[i]
+    end
+end
+@noinline function _retained_scatter_dense_terms!(values, target, width)
+    for i in 1:min(width,length(target))
+        target[i].value = values[i]
+    end
+end
+@noinline function _retained_scatter_dense_values!(values, target, width)
+    for i in 1:min(width,length(target))
+        target[i] = values[i]
+    end
+end
+function gather_retained_parameters!(data::ExpertModeData)
+    for (name,width) in declared_parameter_families(data)
+        values=retained_family!(data,name,width)
+        if name in RETAINED_RBM_FAMILIES || name==:slater
+            terms=name==:slater ? data.orbital_terms : getfield(data,name)
+            _retained_gather_indexed!(values,terms,width)
         else
-            target = name == :gutzwiller ? data.gutzwiller_terms :
-                name == :jastrow ? data.jastrow_terms :
-                name == :dh2 ? data.doublon_holon_2site_params :
-                name == :dh4 ? data.doublon_holon_4site_params : data.opt_trans
-            for i in 1:min(width, length(target))
-                if name in (:gutzwiller, :jastrow)
-                    target[i].value = values[i]
-                else
-                    target[i] = values[i]
-                end
+            source=name==:gutzwiller ? data.gutzwiller_terms :
+                name==:jastrow ? data.jastrow_terms :
+                name==:dh2 ? data.doublon_holon_2site_params :
+                name==:dh4 ? data.doublon_holon_4site_params : data.opt_trans
+            if name in (:gutzwiller,:jastrow)
+                _retained_gather_dense_terms!(values,source,width)
+            else
+                _retained_gather_dense_values!(values,source,width)
             end
         end
     end
-    return data
+    data
+end
+function scatter_retained_parameters!(data::ExpertModeData)
+    for (name,width) in declared_parameter_families(data)
+        values=retained_family!(data,name,width)
+        if name in RETAINED_RBM_FAMILIES || name==:slater
+            terms=name==:slater ? data.orbital_terms : getfield(data,name)
+            _retained_scatter_indexed!(values,terms,width)
+        else
+            target=name==:gutzwiller ? data.gutzwiller_terms :
+                name==:jastrow ? data.jastrow_terms :
+                name==:dh2 ? data.doublon_holon_2site_params :
+                name==:dh4 ? data.doublon_holon_4site_params : data.opt_trans
+            if name in (:gutzwiller,:jastrow)
+                _retained_scatter_dense_terms!(values,target,width)
+            else
+                _retained_scatter_dense_values!(values,target,width)
+            end
+        end
+    end
+    data
 end
 
 const RETAINED_INPUT_FAMILIES = Dict(

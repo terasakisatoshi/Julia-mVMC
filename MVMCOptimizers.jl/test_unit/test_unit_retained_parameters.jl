@@ -206,3 +206,30 @@ end
         @test count(data.optimization_flags) == 1
     end
 end
+
+@testset "retained typed barriers preserve duplicate order and unmapped slots" begin
+    data = ExpertModeData()
+    data.n_gutzwiller_idx = 3
+    data.modpara.n_orbital_idx = 4
+    data.orbital_terms = [
+        OrbitalTerm(0, 1, 1, 0.125 + 0.25im, false),
+        OrbitalTerm(1, 0, 1, -0.5 + 0.125im, false),
+        OrbitalTerm(0, 0, 3, 0.75 - 0.25im, false),
+    ]
+    slater = MVMCExpertModeParsers.retained_family!(data, :slater, 4)
+    slater .= ComplexF64[11,12,13,14]
+    MVMCExpertModeParsers.gather_retained_parameters!(data)
+    @test slater == ComplexF64[11,-0.5+0.125im,13,0.75-0.25im]
+    slater .= ComplexF64[1,2+0.25im,3,4-0.125im]
+    MVMCExpertModeParsers.scatter_retained_parameters!(data)
+    @test [term.value for term in data.orbital_terms] == ComplexF64[2+0.25im,2+0.25im,4-0.125im]
+    @test MVMCExpertModeParsers.retained_family!(data,:gutzwiller,3) == zeros(ComplexF64,3)
+    # A shape change resets only the changed family, keeping other slot storage.
+    old_slater = slater
+    old_gutz = MVMCExpertModeParsers.retained_family!(data,:gutzwiller,3)
+    data.modpara.n_orbital_idx = 5
+    MVMCExpertModeParsers.gather_retained_parameters!(data)
+    @test data.retained_parameters[:slater] !== old_slater
+    @test data.retained_parameters[:gutzwiller] === old_gutz
+    @test data.retained_parameters[:slater] == ComplexF64[0,2+0.25im,0,4-0.125im,0]
+end

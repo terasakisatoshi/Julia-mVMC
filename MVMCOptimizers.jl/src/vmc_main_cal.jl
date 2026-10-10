@@ -4293,6 +4293,7 @@ function vmc_main_cal!(
         use_sr_store = use_sr_store,
         nsrcg = data.modpara.nsrcg != 0,
         use_sr_opt = nvmc_cal_mode == 0,
+        owned_sr = nvmc_cal_mode == 0 && !all_complex,
     )
     ctimer_stop!(maincal_diag_timer, 941)
     ctimer_stop!(maincal_diag_timer, 940)
@@ -4338,7 +4339,9 @@ function vmc_main_cal!(
 
     ctimer_start!(maincal_diag_timer, 940)
     ctimer_start!(maincal_diag_timer, 950)
-    clear_sropt_store!(state.sr_opt)
+    if !_owns_sropt_accumulator(state.sr_opt, local_acc.sr_opt)
+        clear_sropt_store!(state.sr_opt)
+    end
     merge_thread_accumulator!(state, c_timer, local_acc)
 
     # Debug: Check etot at the end of vmc_main_cal!
