@@ -52,7 +52,8 @@ function exchange_counter_hand_fixture(complex, case)
     return data, state, ExchangeCounterTape(fill(UInt32(0x80000000), 624), 0, 0)
 end
 
-# Recover ONLY the four counter statements and verify the prepatch sampler
+# Recover the four counter statements and the three explicit real inverse
+# workspace-scheduling arguments, then verify the independent prepatch sampler
 # bodies before compiling renamed originals. Hashes extracted independently
 # from upstream 7b1ffd5; its reconstructed whole-file historical hash was
 # 6cf602be483f967de71b253fead910d92d3583bea7f9b02caccabad2c7c4deb0.
@@ -70,6 +71,14 @@ function exchange_counter_originals()
         old = replace(body,
             "                state.electron_config.counter[3] += 1\n" => "",
             "                    state.electron_config.counter[4] += 1\n" => "")
+        if name == "vmc_make_sample_real!"
+            threaded_call = "calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state; threaded=true)"
+            original_call = "calculate_m_all_real!(tmp_ele_idx, qp_start, qp_end, data, state)"
+            # Only these three exact calls may change workspace dispatch. Keep
+            # the historical body hash to detect any proposal/RNG/control edit.
+            @test count(threaded_call, old) == 3
+            old = replace(old, threaded_call => original_call)
+        end
         expected = name == "vmc_make_sample!" ?
             "43c34134c8bb432f47afaafed441909c3b23bca25d43480a90a49af3ec5bd006" :
             "b1db11f567c4e90b23aa9a6cb24335ced05b35d12c58b129f5f07e7102f8bcd9"

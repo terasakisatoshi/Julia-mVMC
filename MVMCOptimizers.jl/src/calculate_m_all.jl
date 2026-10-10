@@ -426,12 +426,14 @@ function calculate_m_all_fcmp!(
     # Fall back to sequential execution if only 1 thread or workload is small
     # This avoids @threads overhead when parallelization won't help
     n_threads = nthreads()
-    if n_threads == 1 || qp_num < n_threads
-        # Use sequential execution with first workspace
-        workspace = threaded_workspace.workspaces[1]
+    if n_threads == 1 || qp_num < n_threads || threadid() != 1 ||
+       ccall(:jl_in_threaded_region, Cint, ()) != 0
+        # Static scheduling requires the primary thread outside a threaded region.
+        # Nested/worker callers retain a serial path with their own scratch.
+        serial_workspace = get_thread_workspace(threaded_workspace)
         return calculate_m_all_fcmp!(
             ele_idx, slater_elm_1d, inv_m_array, pf_m_array,
-            qp_start, qp_end, n_site, n_elec, workspace
+            qp_start, qp_end, n_site, n_elec, serial_workspace
         )
     end
 
@@ -442,7 +444,7 @@ function calculate_m_all_fcmp!(
     info = Atomic{Int}(0)
 
     # Process each QP index in parallel
-    @threads for qpidx in 1:qp_num
+    @threads :static for qpidx in 1:qp_num
         # Skip if error already occurred
         if info[] != 0
             continue
@@ -547,57 +549,34 @@ function calculate_m_all_child_real!(
     n_size = n_elec  # Nsize = 2*Ne (total electrons)
     n_site2 = 2 * n_site
 
-    # Construct invM from SlaterElm_real
-    # C code:
-    #   for(msi=0;msi<nsize;msi++) {
-    #     rsi = eleIdx[msi] + (msi/Ne)*Nsite;
-    #     invM_i = invM + msi*Nsize;
-    #     sltE_i = sltE + rsi*Nsite2;
-    #     for(msj=0;msj<nsize;msj++) {
-    #       rsj = eleIdx[msj] + (msj/Ne)*Nsite;
-    #       invM_i[msj] = -sltE_i[rsj];
-    #     }
-    #   }
-
-    # Determine Ne (electrons per spin) from n_elec
-    # n_elec should be even (2*Ne)
-    ne = div(n_elec, 2)
-
+    # Validate the selected sites once. Pivot scratch is not yet live: the
+    # factorization resets every entry before use, so it can temporarily hold
+    # combined site/spin indices without allocation. This removes division and
+    # repeated bounds checks from the O(N^2) gather while preserving each store.
+    n_size >= 2 && iseven(n_size) || throw(ArgumentError("real inverse requires positive even electron count"))
+    length(iwork) >= n_size || throw(DimensionMismatch("pivot workspace is too short"))
+    size(inv_m) == (n_size,n_size) || throw(DimensionMismatch("inverse dimensions"))
+    checkbounds(ele_idx,n_size)
+    ne = div(n_size,2)
+    max_site_spin = 0
     for msi in 1:n_size
-        # Calculate rsi: rsi = ele_idx[msi] + (msi-1)/ne * n_site
-        si = div(msi - 1, ne)  # spin index (0 or 1)
-        ri = ele_idx[msi]  # 0-based site index
-        rsi = ri + si * n_site  # 0-based rsi (ri + si*Nsite)
-
-        # Bounds check for rsi
+        rsi = ele_idx[msi] + (msi > ne ? n_site : 0)
         if rsi < 0 || rsi >= n_site2
-            @error "rsi out of bounds: rsi=$rsi, msi=$msi, ri=$ri, si=$si, n_site=$n_site"
+            @error "combined site/spin index out of bounds" rsi msi n_site
             return 2
         end
-
+        iwork[msi] = rsi
+        max_site_spin = max(max_site_spin,rsi)
+    end
+    max_linear = max_site_spin * n_site2 + max_site_spin + 1
+    if max_linear > length(slater_elm)
+        @error "SlaterElm is too short for selected sites" max_linear length(slater_elm)
+        return 2
+    end
+    @inbounds for msi in 1:n_size
+        offset = Int(iwork[msi]) * n_site2
         for msj in 1:n_size
-            # Calculate rsj: rsj = ele_idx[msj] + (msj-1)/ne * n_site
-            sj = div(msj - 1, ne)  # spin index (0 or 1)
-            rj = ele_idx[msj]  # 0-based site index
-            rsj = rj + sj * n_site  # 0-based rsj (rj + sj*Nsite)
-
-            # Bounds check for rsj
-            if rsj < 0 || rsj >= n_site2
-                @error "rsj out of bounds: rsj=$rsj, msj=$msj, rj=$rj, sj=$sj, n_site=$n_site"
-                return 2
-            end
-
-            # C: invM[msi*Nsize + msj] = -sltE[rsi*Nsite2 + rsj]
-            # Julia: inv_m[msi, msj] = -slater_elm[rsi * n_site2 + rsj + 1]
-            linear_idx = rsi * n_site2 + rsj + 1  # 1-based index
-
-            if linear_idx > length(slater_elm)
-                @error "linear_idx out of bounds: linear_idx=$linear_idx, rsi=$rsi, rsj=$rsj, n_site2=$n_site2, length(slater_elm)=$(length(slater_elm))"
-                return 2
-            end
-
-            # Store in column-major format for LTL decomposition
-            inv_m[msj, msi] = -slater_elm[linear_idx]
+            inv_m[msj,msi] = -slater_elm[offset+Int(iwork[msj])+1]
         end
     end
 
@@ -865,12 +844,14 @@ function calculate_m_all_real!(
     # Fall back to sequential execution if only 1 thread or workload is small
     # This avoids @threads overhead when parallelization won't help
     n_threads = nthreads()
-    if n_threads == 1 || qp_num < n_threads
-        # Use sequential execution with first workspace
-        workspace = threaded_workspace.workspaces[1]
+    if n_threads == 1 || qp_num < n_threads || threadid() != 1 ||
+       ccall(:jl_in_threaded_region, Cint, ()) != 0
+        # Static scheduling requires the primary thread outside a threaded region.
+        # Nested/worker callers retain a serial path with their own scratch.
+        serial_workspace = get_thread_workspace(threaded_workspace)
         return calculate_m_all_real!(
             ele_idx, slater_elm_1d, inv_m_array, pf_m_array,
-            qp_start, qp_end, n_site, n_elec, workspace
+            qp_start, qp_end, n_site, n_elec, serial_workspace
         )
     end
 
@@ -881,7 +862,7 @@ function calculate_m_all_real!(
     info = Atomic{Int}(0)
 
     # Process each QP index in parallel
-    @threads for qpidx in 1:qp_num
+    @threads :static for qpidx in 1:qp_num
         # Skip if error already occurred
         if info[] != 0
             continue

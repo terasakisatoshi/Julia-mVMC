@@ -384,3 +384,64 @@ end
     @test iszero(real_acc.sr_opt.sr_opt_o_store_real[1])
     @test all(iszero, @view(real_acc.sr_opt.sr_opt_oo_real[(active_real+1):end]))
 end
+
+@testset "unit/threading: owned MainCal SR preserves publication and private scratch" begin
+    state = MO.VMCOptimizationState(2, 1, 1, 2, 1, 2, false, false)
+    sr = state.sr_opt
+    fields = (:sr_opt_oo, :sr_opt_ho, :sr_opt_o_store,
+              :sr_opt_oo_real, :sr_opt_ho_real, :sr_opt_o_store_real)
+    ordinary = MO.VMCSROptAccumulator(sr)
+    @test all(name -> getproperty(ordinary,name) !== getproperty(sr,name), fields)
+    fill!(sr.sr_opt_o, 17.0 + 3.0im)
+    fill!(sr.sr_opt_o_real, 19.0)
+    MO.clear_phys_quantity!(state)
+    fill!(sr.sr_opt_o, 17.0 + 3.0im)
+    fill!(sr.sr_opt_o_real, 19.0)
+    owned = MO.main_cal_accumulator!(state; all_complex=false, owned_sr=true)
+    @test MO._owns_sropt_accumulator(sr, owned.sr_opt)
+    @test owned.sr_opt.sr_opt_o !== sr.sr_opt_o
+    @test owned.sr_opt.sr_opt_o_real !== sr.sr_opt_o_real
+    owned.sr_opt.sr_opt_o_real .= 23.0
+    for name in fields
+        values = getproperty(sr,name)
+        fill!(values, eltype(values)(-0.0))
+        isempty(values) || (values[end] = eltype(values)(0.125))
+    end
+    expected = Dict(name => zero(eltype(getproperty(sr,name))) .+ copy(getproperty(sr,name)) for name in fields)
+    MO.merge_thread_accumulator!(state, MO.CTIMER_DISABLED, owned)
+    for name in fields
+        @test isequal(getproperty(sr,name), expected[name])
+    end
+    @test all(==(17.0 + 3.0im), sr.sr_opt_o)
+    @test all(==(19.0), sr.sr_opt_o_real)
+    # The next call clears partial aggregates even after a failed sample pass.
+    MO.clear_phys_quantity!(state)
+    reused = MO.main_cal_accumulator!(state; all_complex=false, owned_sr=true)
+    @test reused === owned
+    @test all(name -> all(iszero,getproperty(sr,name)), fields)
+    @test all(==(23.0), reused.sr_opt.sr_opt_o_real)
+    # A public/default or PhysCal/complex acquisition must never keep aliases.
+    detached = MO.main_cal_accumulator!(state; all_complex=false, owned_sr=false)
+    @test detached !== owned
+    @test !MO._owns_sropt_accumulator(sr, detached.sr_opt)
+    complex = MO.main_cal_accumulator!(state; all_complex=true, owned_sr=true)
+    @test !MO._owns_sropt_accumulator(sr, complex.sr_opt)
+    inactive = MO.main_cal_accumulator!(state; all_complex=false, owned_sr=true, use_sr_opt=false)
+    @test !MO._owns_sropt_accumulator(sr, inactive.sr_opt)
+    # Replacing geometry must reconstruct aliases rather than retain old storage.
+    MO.clear_phys_quantity!(state)
+    old = MO.main_cal_accumulator!(state; all_complex=false, owned_sr=true)
+    state.sr_opt = MO.SROptData(3, 4, false)
+    MO.clear_phys_quantity!(state)
+    resized = MO.main_cal_accumulator!(state; all_complex=false, owned_sr=true)
+    @test resized !== old
+    @test MO._owns_sropt_accumulator(state.sr_opt,resized.sr_opt)
+    @test length(resized.sr_opt.sr_opt_o_real) == length(state.sr_opt.sr_opt_o_real)
+    state.sr_opt = MO.SROptData(4, 2, false)
+    detached_geometry = MO.main_cal_accumulator!(state; all_complex=false, owned_sr=false)
+    @test detached_geometry !== resized
+    @test !detached_geometry.owned_sr
+    @test !MO._owns_sropt_accumulator(state.sr_opt, detached_geometry.sr_opt)
+    @test length(detached_geometry.sr_opt.sr_opt_o_real) == length(state.sr_opt.sr_opt_o_real)
+    @test all(iszero, detached_geometry.sr_opt.sr_opt_oo_real)
+end

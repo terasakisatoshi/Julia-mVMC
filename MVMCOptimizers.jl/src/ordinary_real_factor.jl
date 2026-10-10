@@ -54,7 +54,9 @@ function _ordinary_dsktf2_c_order!(A::AbstractMatrix{Float64}, ipiv::Vector{<:In
                 if A[j, k] != 0.0 || A[j, kk] != 0.0
                     temp1 = alpha * A[j, kk]
                     temp2 = alpha * A[j, k]
-                    @simd for i in 1:j-1
+                    # Distinct columns: j <= k-2, while inputs are k and k-1.
+                    # Each i writes only A[i,j], with no reduction reassociation.
+                    @simd ivdep for i in 1:j-1
                         # Deliberately no @fastmath/@turbo or fused muladd.
                         A[i, j] = (A[i, j] + A[i, k] * temp1) - A[i, kk] * temp2
                     end

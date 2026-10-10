@@ -3,6 +3,30 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # Private real translation of RuQing Xu's invert.tcc, via PfaPack Utu2.
 # See source-adjacent ordinary_real_inverse.NOTICE and .LICENSE.
+# Unit-upper DTRTI2 column algorithm, independently expressed in Julia.
+# LAPACK DTRTI2 calls DTRMV(U,N,U) then DSCAL(-1) for each column.
+# The diagonal and lower triangle must remain untouched: they store other
+# parts of the skew factorization. Only independent i entries are vectorized.
+function _ordinary_unit_upper_trtri_real!(A::AbstractMatrix{Float64})
+    Base.require_one_based_indexing(A)
+    n = size(A, 1)
+    size(A, 2) == n || throw(DimensionMismatch("triangular inverse must be square"))
+    @inbounds for j in 2:n
+        for k in 1:j-1
+            temp = A[k,j]
+            if temp != 0.0
+                @simd ivdep for i in 1:k-1
+                    A[i,j] += temp * A[i,k]
+                end
+            end
+        end
+        @simd ivdep for i in 1:j-1
+            A[i,j] = -A[i,j]
+        end
+    end
+    return A
+end
+
 function _ordinary_sktdsmx_real_c_order!(n::Int, vt::Vector{Float64},
                                         B::AbstractMatrix{Float64}, C::AbstractMatrix{Float64})
     Base.require_one_based_indexing(vt, B, C)
@@ -42,7 +66,14 @@ function _ordinary_utu2inv_real_c_order!(n::Int, A::AbstractMatrix{Float64}, ldA
     @inbounds for i in 1:n
         M[i,i] = 1.0
     end
-    LinearAlgebra.LAPACK.trtri!('U', 'U', @view(A[1:n-1,2:n]))
+    # Optimize the measured matrix sizes. Tiny SR-CG systems amplify provider
+    # roundoff: on macOS Julia 1.11, a 2.8e-17 inverse difference at n=6 changed
+    # the first parameter update. Retain their established LAPACK provider.
+    if 32 <= n <= 64
+        _ordinary_unit_upper_trtri_real!(@view(A[1:n-1,2:n]))
+    else
+        LinearAlgebra.LAPACK.trtri!('U', 'U', @view(A[1:n-1,2:n]))
+    end
     @inbounds for j in 1:n-2, i in 1:j
         M[i,j+1] = A[i,j+2]
     end

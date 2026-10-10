@@ -179,7 +179,16 @@ mutable struct VMCSROptAccumulator
     sr_opt_o_store_real::Vector{Float64}
 end
 
-function VMCSROptAccumulator(sr::SROptData)
+function VMCSROptAccumulator(sr::SROptData; owned::Bool = false)
+    if owned
+        # MainCal cleared aggregates before acquiring this private accumulator.
+        # Derivative scratch remains private: it was never published by merge.
+        clear_sropt_store!(sr)
+        return VMCSROptAccumulator(
+            sr.sr_opt_oo, sr.sr_opt_ho, zeros(ComplexF64, length(sr.sr_opt_o)), sr.sr_opt_o_store,
+            sr.sr_opt_oo_real, sr.sr_opt_ho_real, zeros(Float64, length(sr.sr_opt_o_real)), sr.sr_opt_o_store_real,
+        )
+    end
     return VMCSROptAccumulator(
         zeros(ComplexF64, length(sr.sr_opt_oo)),
         zeros(ComplexF64, length(sr.sr_opt_ho)),
@@ -190,6 +199,12 @@ function VMCSROptAccumulator(sr::SROptData)
         zeros(Float64, length(sr.sr_opt_o_real)),
         zeros(Float64, length(sr.sr_opt_o_store_real)),
     )
+end
+
+# Only a private MainCal accumulator may alias every published SR array.
+function _owns_sropt_accumulator(sr::SROptData, acc::VMCSROptAccumulator)
+    return all(name -> getproperty(sr, name) === getproperty(acc, name),
+        (:sr_opt_oo, :sr_opt_ho, :sr_opt_o_store, :sr_opt_oo_real, :sr_opt_ho_real, :sr_opt_o_store_real))
 end
 
 function clear_sropt_accumulator!(acc::VMCSROptAccumulator)
@@ -463,6 +478,7 @@ mutable struct VMCThreadAccumulator
     all_complex::Bool
     use_sr_store::Bool
     nsrcg::Bool
+    owned_sr::Bool
 end
 
 function VMCThreadAccumulator(
@@ -471,10 +487,11 @@ function VMCThreadAccumulator(
     all_complex::Bool = isempty(state.sr_opt.sr_opt_oo_real),
     use_sr_store::Bool = false,
     nsrcg::Bool = false,
+    owned_sr::Bool = false,
 )
     return VMCThreadAccumulator(
         VMCEnergyAccumulator(),
-        VMCSROptAccumulator(state.sr_opt),
+        VMCSROptAccumulator(state.sr_opt; owned = owned_sr),
         VMCPhysAccumulator(state.phys_quantities),
         VMCCounterAccumulator(length(state.electron_config.counter)),
         VMCMainCalScratch(state),
@@ -482,6 +499,7 @@ function VMCThreadAccumulator(
         all_complex,
         use_sr_store,
         nsrcg,
+        owned_sr,
     )
 end
 
@@ -541,6 +559,10 @@ function reset_sropt_accumulator_for_maincal!(
     nsrcg::Bool = false,
     use_sr_opt::Bool = true,
 )
+    if _owns_sropt_accumulator(sr, acc)
+        clear_sropt_store!(sr)
+        return acc
+    end
     if !use_sr_opt
         return clear_sropt_accumulator!(acc)
     end
@@ -699,10 +721,14 @@ function main_cal_accumulator!(
     use_sr_store::Bool = false,
     nsrcg::Bool = false,
     use_sr_opt::Bool = true,
+    owned_sr::Bool = false,
 )
+    owned_sr = owned_sr && use_sr_opt && !all_complex
     cached = state.workspace.main_cal_accumulator
     if cached isa VMCThreadAccumulator &&
-       ctimer_enabled(cached.timer) == ctimer_enabled(parent_timer)
+       ctimer_enabled(cached.timer) == ctimer_enabled(parent_timer) &&
+       cached.owned_sr == owned_sr &&
+       (!owned_sr || _owns_sropt_accumulator(state.sr_opt, cached.sr_opt))
         return reset_thread_accumulator!(
             cached,
             state;
@@ -719,6 +745,7 @@ function main_cal_accumulator!(
         all_complex = all_complex,
         use_sr_store = use_sr_store,
         nsrcg = nsrcg,
+        owned_sr = owned_sr,
     )
     state.workspace.main_cal_accumulator = acc
     return acc
@@ -730,7 +757,17 @@ function merge_thread_accumulator!(
     local_acc::VMCThreadAccumulator,
 )
     merge_energy_accumulator!(state.energy, local_acc.energy)
-    merge_sropt_accumulator!(state.sr_opt, local_acc.sr_opt)
+    if _owns_sropt_accumulator(state.sr_opt, local_acc.sr_opt)
+        # Preserve the original zero-plus-local publication, including signed zero.
+        for name in (:sr_opt_oo, :sr_opt_ho, :sr_opt_o_store,
+                     :sr_opt_oo_real, :sr_opt_ho_real, :sr_opt_o_store_real)
+            values = getproperty(state.sr_opt, name)
+            values .+= zero(eltype(values))
+        end
+    else
+        merge_sropt_accumulator!(state.sr_opt, local_acc.sr_opt)
+    end
+
     merge_phys_accumulators!(state.phys_quantities, (local_acc.phys,))
     merge_counter_accumulator!(state.electron_config.counter, local_acc.counter)
     ctimer_merge!(parent_timer, local_acc.timer)
