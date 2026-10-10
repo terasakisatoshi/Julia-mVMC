@@ -46,4 +46,9 @@ using Test, MVMCOptimizers, PfaPack
     @test tied_piv[2] == 1
     @test MVMCOptimizers._ordinary_dsktf2_c_order!(zeros(4,4), zeros(Int,4)) == 3
     @test MVMCOptimizers._ordinary_dsktf2_c_order!(zeros(0,0), Int[]) == 0
+    @test_throws ArgumentError MVMCOptimizers._ordinary_dsktf2_c_order!(zeros(2,3), zeros(Int,2))
+    @test_throws DimensionMismatch MVMCOptimizers._ordinary_dsktf2_c_order!(zeros(4,4), zeros(Int,3))
+    @test_throws ArgumentError MVMCOptimizers._ordinary_sktdsmx_real_c_order!(3, zeros(3), zeros(3,3), zeros(3,3))
+    @test_throws DimensionMismatch MVMCOptimizers._ordinary_sktdsmx_real_c_order!(4, zeros(3), zeros(4,3), zeros(4,4))
+    @test_throws DimensionMismatch MVMCOptimizers._ordinary_sktdsmx_real_c_order!(4, zeros(2), zeros(4,4), zeros(4,4))
 end

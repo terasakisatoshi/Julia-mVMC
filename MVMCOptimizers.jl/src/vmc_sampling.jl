@@ -937,6 +937,26 @@ end
 Calculate log of projection ratio.
 Equivalent to C's `LogProjRatio()`.
 """
+@inline function _projection_parameter_real(data::ExpertModeData, layout, idx::Int)
+    # Read the same flattened C layout without allocating a vector on every
+    # Metropolis proposal. Missing header slots still contribute zero, and
+    # coefficients are read live after each SR update (no stale parameter cache).
+    if idx <= layout.jastrow_offset
+        return idx <= length(data.gutzwiller_terms) ? real(data.gutzwiller_terms[idx].value) : 0.0
+    elseif idx <= layout.spinjastrow_offset
+        local_idx = idx - layout.jastrow_offset
+        return local_idx <= length(data.jastrow_terms) ? real(data.jastrow_terms[local_idx].value) : 0.0
+    elseif idx <= layout.dh2_offset
+        return 0.0
+    elseif idx <= layout.dh4_offset
+        local_idx = idx - layout.dh2_offset
+        return local_idx <= length(data.doublon_holon_2site_params) ? real(data.doublon_holon_2site_params[local_idx]) : 0.0
+    else
+        local_idx = idx - layout.dh4_offset
+        return local_idx <= length(data.doublon_holon_4site_params) ? real(data.doublon_holon_4site_params[local_idx]) : 0.0
+    end
+end
+
 function log_proj_ratio(
     proj_cnt_new::Vector{Int},
     proj_cnt_old::Vector{Int},
@@ -944,11 +964,10 @@ function log_proj_ratio(
 )::Float64
     z = 0.0
     layout = MVMCExpertModeParsers.projection_layout(data)
-    proj_params = MVMCExpertModeParsers.projection_parameters(data, layout)
-    n_proj = min(length(proj_cnt_new), length(proj_cnt_old), length(proj_params))
+    n_proj = min(length(proj_cnt_new), length(proj_cnt_old), layout.n_proj)
 
     for idx = 1:n_proj
-        z += real(proj_params[idx]) * (proj_cnt_new[idx] - proj_cnt_old[idx])
+        z += _projection_parameter_real(data, layout, idx) * (proj_cnt_new[idx] - proj_cnt_old[idx])
     end
 
     return z
@@ -963,11 +982,10 @@ Equivalent to C's `LogProjVal()`.
 function log_proj_val(proj_cnt::Vector{Int}, data::ExpertModeData)::Float64
     z = 0.0
     layout = MVMCExpertModeParsers.projection_layout(data)
-    proj_params = MVMCExpertModeParsers.projection_parameters(data, layout)
-    n_proj = min(length(proj_cnt), length(proj_params))
+    n_proj = min(length(proj_cnt), layout.n_proj)
 
     for idx = 1:n_proj
-        z += real(proj_params[idx]) * proj_cnt[idx]
+        z += _projection_parameter_real(data, layout, idx) * proj_cnt[idx]
     end
 
     return z
@@ -5589,8 +5607,10 @@ function update_m_all_real!(
     pf_m_real = state.slater_matrix.pf_m_real
 
     # Work arrays
-    vec1 = zeros(Float64, n_size)
-    vec2 = zeros(Float64, n_size)
+    vec1 = state.workspace.hop_vec1_real
+    vec2 = state.workspace.hop_vec2_real
+    length(vec1) == n_size || resize!(vec1, n_size)
+    length(vec2) == n_size || resize!(vec2, n_size)
 
     # Process each QP index
     for qpidx = qp_start:(qp_end-1)

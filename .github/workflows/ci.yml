@@ -11,13 +11,16 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
-        julia-version: ["1.11", "1.12"]
+        julia-version: ["1.11", "1.12", "1.13"]
       fail-fast: false
 
     env:
       # CI runs the smoke-test step counts; release-gate sweeps (50 SR steps)
       # are run locally before tagging.
       JULIA_MVMC_EXAMPLE_STEPS: "5"
+      # A single thread keeps the interactive pool empty; the plain spelling
+      # also works with Julia 1.11 Pkg.test's generated --threads argument.
+      JULIA_NUM_THREADS: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -78,18 +81,18 @@ jobs:
           julia --project=@. test/integration/phys_cal_equivalent.jl
 
       - name: Run MPI smoke and failure-mode tests
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && (matrix.julia-version == '1.12' || matrix.julia-version == '1.13') }}
         run: |
           OMP_NUM_THREADS=1 JULIA_NUM_THREADS=1 julia --project=@. test/mpi/run_mpi_smoke.jl
 
       - name: Run threading default C-parity guard
-        if: ${{ matrix.os == 'ubuntu-latest' && matrix.julia-version == '1.12' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && (matrix.julia-version == '1.12' || matrix.julia-version == '1.13') }}
         shell: bash
         run: |
           unset JULIA_MVMC_INNER_THREADS JULIA_MVMC_PFAPACK_THREADS
-          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=2 julia --project=@. test/integration/runtests.jl
-          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=2 julia --project=@. test/integration/ctest_equivalent.jl
-          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=2 julia --project=@. test/integration/phys_cal_equivalent.jl
+          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=2,0 julia --project=@. test/integration/runtests.jl
+          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=2,0 julia --project=@. test/integration/ctest_equivalent.jl
+          OMP_NUM_THREADS=1 JULIA_NUM_THREADS=2,0 julia --project=@. test/integration/phys_cal_equivalent.jl
 
       - name: Run examples (smoke test, JULIA_MVMC_EXAMPLE_STEPS=5)
         run: |

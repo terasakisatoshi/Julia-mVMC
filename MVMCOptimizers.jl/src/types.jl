@@ -235,6 +235,11 @@ mutable struct SamplingWorkspace
     pf_m_new_real::Vector{Float64}
     pf_m_new::Vector{ComplexF64}
 
+    # Serial rank-local accepted-hop work; reuse instead of allocating two
+    # vectors for every Sherman–Morrison update.
+    hop_vec1_real::Vector{Float64}
+    hop_vec2_real::Vector{Float64}
+
     # Cached arrays (computed once)
     loc_spn::Vector{Int}
 
@@ -255,6 +260,8 @@ mutable struct SamplingWorkspace
             zeros(Int, n_proj),
             zeros(Float64, n_qp_full),
             zeros(ComplexF64, n_qp_full),
+            zeros(Float64, n_size),
+            zeros(Float64, n_size),
             zeros(Int, n_site),  # loc_spn will be initialized later
             ThreadedPfaPackWorkspace(n_size),  # Thread-local workspaces for parallel Pfaffian calculations
             nothing,

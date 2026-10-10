@@ -4,14 +4,18 @@
 # source-adjacent ordinary_real_factor.LICENSE. See dsktf2.f:208-260 and
 # dskr2.f:162-178. This private port does not modify PfaPack methods.
 function _ordinary_dsktf2_c_order!(A::AbstractMatrix{Float64}, ipiv::Vector{<:Integer})
+    Base.require_one_based_indexing(A, ipiv)
     n = size(A, 1)
     size(A, 2) == n || throw(ArgumentError("Matrix must be square"))
     length(ipiv) >= n || throw(DimensionMismatch("pivot workspace is too short"))
-    for i in 1:n
+    # Shape and pivot capacity are checked once. Every matrix index below is
+    # bounded by n; preserve the scalar C update order without per-element
+    # SubArray bounds checks in the cubic rank-2 loop.
+    @inbounds for i in 1:n
         ipiv[i] = i
     end
     info = 0
-    for k in n:-1:2
+    @inbounds for k in n:-1:2
         kp = 1
         colmax = abs(A[1, k])
         for j in 2:k-1
@@ -50,7 +54,7 @@ function _ordinary_dsktf2_c_order!(A::AbstractMatrix{Float64}, ipiv::Vector{<:In
                 if A[j, k] != 0.0 || A[j, kk] != 0.0
                     temp1 = alpha * A[j, kk]
                     temp2 = alpha * A[j, k]
-                    for i in 1:j-1
+                    @simd for i in 1:j-1
                         # Deliberately no @fastmath/@turbo or fused muladd.
                         A[i, j] = (A[i, j] + A[i, k] * temp1) - A[i, kk] * temp2
                     end
