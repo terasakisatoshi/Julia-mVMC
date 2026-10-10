@@ -844,7 +844,9 @@ function calculate_m_all_real!(
     # Fall back to sequential execution if only 1 thread or workload is small
     # This avoids @threads overhead when parallelization won't help
     n_threads = nthreads()
-    if n_threads == 1 || qp_num < n_threads || threadid() != 1 ||
+    # QP planes and worker scratch are independent. A pool larger than the
+    # QP range still has useful workers; static scheduling leaves the rest idle.
+    if n_threads == 1 || qp_num < 2 || threadid() != 1 ||
        ccall(:jl_in_threaded_region, Cint, ()) != 0
         # Static scheduling requires the primary thread outside a threaded region.
         # Nested/worker callers retain a serial path with their own scratch.

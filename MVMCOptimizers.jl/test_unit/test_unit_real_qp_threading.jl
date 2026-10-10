@@ -1,7 +1,7 @@
 using Test, MVMCOptimizers, LinearAlgebra
 @testset "Ordinary real QP threading preserves independent matrix operations" begin
     BLAS.set_num_threads(1)
-    for n in (4, 16, 32, 64), qps in (1, 4, 8)
+    for n in (4, 16, 32, 64), qps in (0, 1, 2, 3, 4, 7, 8, 17)
         slater = Float64[]
         operators = Matrix{Float64}[]
         for q in 1:qps
@@ -149,5 +149,28 @@ end
         residual = opnorm(operator*inverse-I, Inf)/(opnorm(operator,Inf)*opnorm(inverse,Inf)+1)
         @test residual <= 256n*eps(Float64)
         @test all(==(-91.0), parent[[1,n+2],:]) && all(==(-91.0), parent[:,[1,n+2]])
+    end
+end
+
+@testset "Real QPs use available workers below pool capacity" begin
+    for qps in (2, 3, 8)
+        n=4; indices=[0,1,0,1]
+        slater=Float64[]
+        for q in 1:qps
+            A=[0.0 2+q/16 .125 0; -(2+q/16) 0 0 -.125; -.125 0 0 3+q/16; 0 .125 -(3+q/16) 0]
+            append!(slater,vec(permutedims(A)))
+        end
+        workspace=MVMCOptimizers.ThreadedPfaPackWorkspace(n;real_only=true)
+        for scratch in workspace.workspaces
+            fill!(scratch.iwork,-1)
+        end
+        inverse=zeros(n,n,qps); pfaffian=zeros(qps)
+        @test MVMCOptimizers.calculate_m_all_real!(
+            indices,slater,inverse,pfaffian,1,qps+1,2,n,workspace)==0
+        # Every used scratch receives valid one-based integer pivots. Unused
+        # workers retain the sentinel, so this proves actual kernel execution
+        # rather than merely checking the requested pool capacity.
+        used=count(scratch->all(>(0),scratch.iwork),workspace.workspaces)
+        @test used==min(qps,Threads.nthreads())
     end
 end
