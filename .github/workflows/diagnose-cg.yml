@@ -18,6 +18,9 @@ jobs:
           brew install gcc
           FC=$(find "$(brew --prefix gcc)/bin" -name 'gfortran-*' | sort | tail -1)
           echo "FC=$FC" >> "$GITHUB_ENV"
+          mkdir -p "$RUNNER_TEMP/gfortran-shim"
+          ln -sf "$FC" "$RUNNER_TEMP/gfortran-shim/gfortran"
+          echo "$RUNNER_TEMP/gfortran-shim" >> "$GITHUB_PATH"
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1.11'
