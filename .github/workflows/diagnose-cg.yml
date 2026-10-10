@@ -1,0 +1,26 @@
+name: Diagnose CG provider
+on:
+  push:
+    branches: [diag/issue496-macos-cg]
+jobs:
+  diagnose:
+    runs-on: macos-latest
+    env:
+      JULIA_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      OMP_NUM_THREADS: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - run: |
+          brew install gcc
+          FC=$(find "$(brew --prefix gcc)/bin" -name 'gfortran-*' | sort | tail -1)
+          echo "FC=$FC" >> "$GITHUB_ENV"
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.11'
+      - uses: julia-actions/cache@v2
+      - run: julia --project=@. -e 'using Pkg; Pkg.instantiate(); Pkg.build(verbose=true)'
+      - run: julia --project=@. test/integration/tools/diagnose_cg_perf.jl
