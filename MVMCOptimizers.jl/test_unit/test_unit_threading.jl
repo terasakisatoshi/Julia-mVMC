@@ -88,6 +88,36 @@ end
     @test short_dst == ComplexF64.(real_src[1:4], 0.0)
 end
 
+@testset "unit/threading: copy dispatch budget and boundaries" begin
+    old = get(ENV, "JULIA_MVMC_INNER_THREADS", nothing)
+    try
+        ENV["JULIA_MVMC_INNER_THREADS"] = "1"
+        expected = Threads.nthreads() > 1
+        # Cheap copies have their own gate; numerical kernels retain theirs.
+        @test MO.vmc_inner_threading_enabled(1024, true) == expected
+        @test !MO.vmc_copy_threading_enabled(65535, true)
+        @test MO.vmc_copy_threading_enabled(65536, true) == expected
+        @test !MO.vmc_copy_threading_enabled(65536, false)
+        for n in (0, 128, 65535, 65536, 65537, 131072)
+            src = Float64.(1:n)
+            complex_src = complex.(src, -src)
+            complex_dst = fill(ComplexF64(-1, 9), n + 2)
+            real_dst = fill(-1.0, n + 2)
+            @test MO.copy_real_to_complex!(complex_dst, src, n; threaded = true) === complex_dst
+            @test MO.copy_complex_realpart!(real_dst, complex_src, n; threaded = true) === real_dst
+            # Conversion/copy contracts are exact, including the untouched tail.
+            @test complex_dst[1:n] == complex.(src, 0.0)
+            @test real_dst[1:n] == src
+            @test complex_dst[(n+1):end] == fill(ComplexF64(-1, 9), 2)
+            @test real_dst[(n+1):end] == fill(-1.0, 2)
+        end
+        ENV["JULIA_MVMC_INNER_THREADS"] = "0"
+        @test !MO.vmc_copy_threading_enabled(131072, true)
+    finally
+        old === nothing ? delete!(ENV, "JULIA_MVMC_INNER_THREADS") : (ENV["JULIA_MVMC_INNER_THREADS"] = old)
+    end
+end
+
 @testset "unit/threading: energy accumulator reduction" begin
     a = MO.VMCEnergyAccumulator()
     b = MO.VMCEnergyAccumulator()

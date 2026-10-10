@@ -54,6 +54,18 @@ end
     return Int(work_items) >= threshold
 end
 
+# Array copies carry much less work per item than numerical kernels. Starting
+# static thread tasks for 64 values costs more than the serial SIMD copy.
+# The standalone copy benchmark in benchmark/inner_copy_dispatch.jl records
+# the crossover; keep the generic kernel gate unchanged.
+const VMC_COPY_MIN_WORK_ITEMS = 65536
+
+@inline function vmc_copy_threading_enabled(work_items::Integer, threaded::Bool)
+    return vmc_inner_threading_enabled(
+        work_items, threaded; min_work_per_thread = VMC_COPY_MIN_WORK_ITEMS,
+    )
+end
+
 function copy_real_to_complex!(
     dst::AbstractVector{ComplexF64},
     src::AbstractVector{Float64},
@@ -62,7 +74,7 @@ function copy_real_to_complex!(
 )
     n_copy = min(Int(n), length(dst), length(src))
     n_copy <= 0 && return dst
-    if vmc_inner_threading_enabled(n_copy, threaded)
+    if vmc_copy_threading_enabled(n_copy, threaded)
         Base.Threads.@threads :static for i = 1:n_copy
             @inbounds dst[i] = ComplexF64(src[i], 0.0)
         end
@@ -82,7 +94,7 @@ function copy_complex_realpart!(
 )
     n_copy = min(Int(n), length(dst), length(src))
     n_copy <= 0 && return dst
-    if vmc_inner_threading_enabled(n_copy, threaded)
+    if vmc_copy_threading_enabled(n_copy, threaded)
         Base.Threads.@threads :static for i = 1:n_copy
             @inbounds dst[i] = real(src[i])
         end
