@@ -66,7 +66,10 @@ function _ordinary_utu2inv_real_c_order!(n::Int, A::AbstractMatrix{Float64}, ldA
     @inbounds for i in 1:n
         M[i,i] = 1.0
     end
-    if n <= 64
+    # Optimize the measured matrix sizes. Tiny SR-CG systems amplify provider
+    # roundoff: on macOS Julia 1.11, a 2.8e-17 inverse difference at n=6 changed
+    # the first parameter update. Retain their established LAPACK provider.
+    if 32 <= n <= 64
         _ordinary_unit_upper_trtri_real!(@view(A[1:n-1,2:n]))
     else
         LinearAlgebra.LAPACK.trtri!('U', 'U', @view(A[1:n-1,2:n]))
