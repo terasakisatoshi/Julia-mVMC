@@ -172,6 +172,12 @@ struct CUDAObservables
     batched_inverse::Union{Nothing,BatchedInverse}
 end
 
+# One-body Hamiltonian ratios already have an ordered inverse-row dot path.
+# Diagonal two-body terms require only occupations. Requested Green functions
+# keep the full transformed matrix, as do Hamiltonians with two moving pairs.
+requires_transformed_slater(ops; measure_greens=true) = measure_greens ||
+    any(op -> op[7] != 1 && (op[1] != op[2] || op[4] != op[5]), ops)
+
 function CUDAObservables(s::CUDAState, data; measure_greens=true)
     ops, coeffs, one, two, ex1, ex2 = operator_tables(data)
     inverse_mode = get(ENV, "JULIA_MVMC_GPU_INVERSE", "batched")
@@ -179,6 +185,8 @@ function CUDAObservables(s::CUDAState, data; measure_greens=true)
         throw(ArgumentError("JULIA_MVMC_GPU_INVERSE must be batched or cooperative"))
     use_batched = s.nelec >= 32 && inverse_mode == "batched"
     packed_batch = s.nelec >= 32 && !use_batched ? size(s.configurations,2) : 0
+    transform_batch = s.nelec >= 32 && requires_transformed_slater(ops; measure_greens) ?
+                      size(s.configurations,2) : 0
     if !measure_greens
         empty!(one); empty!(two); empty!(ex1); empty!(ex2)
     end
@@ -190,7 +198,7 @@ function CUDAObservables(s::CUDAState, data; measure_greens=true)
         CUDA.zeros(Bool, s.nqp, size(s.configurations,2)),
         CUDA.zeros(Float64, 2s.nelec, 2s.nelec, packed_batch),
         CUDA.zeros(Float64, 2s.nelec, 2s.nelec, packed_batch),
-        CUDA.zeros(Float64, s.nelec >= 32 ? size(s.configurations,2) : 0,
+        CUDA.zeros(Float64, transform_batch,
                    2s.nelec, 2s.nsite, s.nqp),
         CUDA.zeros(Float64, length(ops)+length(one)+length(two)+length(ex1),
                    s.nelec >= 32 ? size(s.configurations,2) : 0),
@@ -213,9 +221,9 @@ function CPU.gpu_observables!(s::CUDAState, o::CUDAObservables;sampling_cache=no
             cache_view(o.inverse), o.pfaffians, o.valid, s.configurations, s.slater, factor_view(s.factors),
             pivot_view(s.pivots), s.pfaffians, s.nsite, s.nelec, s.nqp, batch)
     end
-    if o.batched_inverse !== nothing
+    if !isempty(o.transformed) && o.batched_inverse !== nothing
         batched_transform_cache!(s,o,o.batched_inverse)
-    elseif s.nelec >= 32
+    elseif !isempty(o.transformed) && s.nelec >= 32
         entries = batch * 2s.nelec * 2s.nsite * s.nqp
         @cuda threads=256 blocks=cld(entries,256) fastmath=false transformed_slater_kernel!(
             cache_view(o.transformed), cache_view(o.inverse), o.valid,
