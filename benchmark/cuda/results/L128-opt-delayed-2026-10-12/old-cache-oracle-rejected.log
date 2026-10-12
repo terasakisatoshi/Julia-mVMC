@@ -1,0 +1,30 @@
+[ Info: Parsing completed successfully
+ERROR: LoadError: Some tests did not pass: 7 passed, 1 failed, 0 errored, 0 broken.
+in expression starting at /home/terasaki/work/atelierarith/julia-mvmc-double-main/benchmark/cuda/results/L128-opt-delayed-2026-10-12/inverse-diagnostic.jl:64
+variant=baseline max_normalized_inverse_residual=3.974720613622874e-11
+variant=candidate max_normalized_inverse_residual=1.5504371834235043e-11
+field=overlaps max_abs_difference=1.485225237003024e58 failed_entries=0
+field=logcorrelations max_abs_difference=0.0 failed_entries=0
+field=pfaffians max_abs_difference=5.438261566802345e58 failed_entries=4
+pf_index=CartesianIndex(6, 18) baseline=-1.8719570236003558e67 candidate=-1.8719570215122887e67 cpu=-1.8719570225048828e67 condition=268.5749097986566 baseline_rel_error=5.852021089935988e-10 candidate_rel_error=5.302440708732092e-10
+pf_index=CartesianIndex(5, 91) baseline=1.5406956349128166e64 candidate=1.5406956322901163e64 cpu=1.5406956328178905e64 condition=346135.3806493554 baseline_rel_error=1.3597274417520566e-9 candidate_rel_error=3.425558725567157e-10
+pf_index=CartesianIndex(8, 170) baseline=1.1944231546869877e66 candidate=1.1944231515679273e66 cpu=1.1944231528313857e66 condition=4822.370913894435 baseline_rel_error=1.5535548403278199e-9 candidate_rel_error=1.0577979603354493e-9
+pf_index=CartesianIndex(1, 207) baseline=-8.259927363161217e66 candidate=-8.25992735413433e66 cpu=-8.259927355828483e66 condition=958.3972530659929 baseline_rel_error=8.877478752111756e-10 candidate_rel_error=2.051050440599056e-10
+
+Long L128 production controls and physical cache values: Test Failed at /home/terasaki/work/atelierarith/julia-mvmc-double-main/benchmark/cuda/results/L128-opt-delayed-2026-10-12/inverse-diagnostic.jl:56
+  Expression: all(mask)
+   Evaluated: all(Bool[1 1 … 1 1; 1 1 … 1 1; … ; 1 1 … 1 1; 1 1 … 1 1])
+  Stacktrace:
+   [1] macro expansion
+     @ ~/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/share/julia/stdlib/v1.13/Test/src/Test.jl:758 [inlined]
+   [2] macro expansion
+     @ ~/work/atelierarith/julia-mvmc-double-main/benchmark/cuda/results/L128-opt-delayed-2026-10-12/inverse-diagnostic.jl:56 [inlined]
+   [3] macro expansion
+     @ ~/.julia/juliaup/julia-1.13.1+0.x64.linux.gnu/share/julia/stdlib/v1.13/Test/src/Test.jl:1967 [inlined]
+   [4] diagnose()
+     @ Main ~/work/atelierarith/julia-mvmc-double-main/benchmark/cuda/results/L128-opt-delayed-2026-10-12/inverse-diagnostic.jl:38
+max_abs_inverse_difference=1.3639585176861146e-6
+per_entry_old_inverse_atol_rtol_1e9=false
+Test Summary:                                           | Pass  Fail  Total  Time
+Long L128 production controls and physical cache values |    7     1      8  4.5s
+RNG of the outermost testset: Xoshiro(0xea7641a276d83e89, 0x09dbe5fcb7190f4a, 0x23e2a59b838f03ef, 0xa7596e9ac4e14317, 0x4ee935dd901755b3)

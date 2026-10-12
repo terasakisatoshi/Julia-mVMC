@@ -1,0 +1,16 @@
+Test Summary:                                                | Pass  Total   Time
+Resident hopping inverse cache preserves fixed control paths |  776    776  25.3s
+Test Summary:                                                  | Pass  Total   Time
+QP groups retain ordered sampling and inactive-group fallbacks |   80     80  14.3s
+Test Summary:                                       | Pass  Total   Time
+Tiled triangular update preserves packet boundaries | 1680   1680  11.5s
+Test Summary:                                  | Pass  Total   Time
+Triangular grouped fallback and inactive lanes |  132    132  10.3s
+Test Summary:                                                    | Pass  Total  Time
+Runner selects triangular updates only for large resident caches |    5      5  0.4s
+Test Summary:                                         | Pass  Total   Time
+Delayed inverse updates publish complete long packets |  664    664  20.1s
+Test Summary:                                                         | Pass  Total  Time
+Fused cofactors preserve sparse contraction and invalid-walker output |    7      7  6.4s
+Test Summary:                                               | Pass  Total  Time
+Fused derivative reciprocal preserves extreme finite ratios |    1      1  0.4s

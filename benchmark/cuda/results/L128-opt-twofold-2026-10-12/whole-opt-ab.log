@@ -1,0 +1,50 @@
+baseline checkout=/home/terasaki/work/atelierarith/julia-mvmc-gpu source_commit=358e59038a64f344ec15ea48557245e8ab32a9e8
+baseline: variant=baseline Julia=1.13.1 Julia_threads=1 BLAS_threads=1 BLAS=LBTConfig([ILP64] libopenblas64_.so) GPU=NVIDIA GeForce RTX 3060
+baseline: optimizer_source=/home/terasaki/work/atelierarith/julia-mvmc-gpu/MVMCOptimizers.jl/src/MVMCOptimizers.jl
+baseline: input_sha256 8c12fb80972128ac0921a15f957a7bc00b38ac9cc6cf0d3e0e0dd6d9efdbab00 /tmp/jl_6A52mc/input/namelist.def
+baseline: input_sha256 36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8 /tmp/jl_6A52mc/fixed/zqp_opt.dat
+baseline: input_sha256 41dde0457bfe9e533a98c4017796fc56864202429e8d215c25b1907624bd6fbc /tmp/jl_6A52mc/input/modpara.def
+baseline: READY
+baseline: [ Info: Parsing completed successfully
+baseline: rep=0 variant=baseline seconds=57.122201137 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+baseline: DONE 0
+candidate checkout=/home/terasaki/work/atelierarith/julia-mvmc-double-main source_commit=77eae13a801e53e4582d23c52a5d00da102ca696
+candidate: variant=candidate Julia=1.13.1 Julia_threads=1 BLAS_threads=1 BLAS=LBTConfig([ILP64] libopenblas64_.so) GPU=NVIDIA GeForce RTX 3060
+candidate: optimizer_source=/home/terasaki/work/atelierarith/julia-mvmc-double-main/MVMCOptimizers.jl/src/MVMCOptimizers.jl
+candidate: input_sha256 8c12fb80972128ac0921a15f957a7bc00b38ac9cc6cf0d3e0e0dd6d9efdbab00 /tmp/jl_6A52mc/input/namelist.def
+candidate: input_sha256 36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8 /tmp/jl_6A52mc/fixed/zqp_opt.dat
+candidate: input_sha256 41dde0457bfe9e533a98c4017796fc56864202429e8d215c25b1907624bd6fbc /tmp/jl_6A52mc/input/modpara.def
+candidate: READY
+candidate: [ Info: Parsing completed successfully
+candidate: rep=0 variant=candidate seconds=54.382091215 energy_per_site=0.7795418080426915 accepted_last_interval=14742
+candidate: DONE 0
+baseline: [ Info: Parsing completed successfully
+baseline: rep=1 variant=baseline seconds=10.434381148 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+baseline: DONE 1
+candidate: [ Info: Parsing completed successfully
+candidate: rep=1 variant=candidate seconds=5.131494781 energy_per_site=0.7795418080426915 accepted_last_interval=14742
+candidate: DONE 1
+candidate: [ Info: Parsing completed successfully
+candidate: rep=2 variant=candidate seconds=5.125963152 energy_per_site=0.7795418080426915 accepted_last_interval=14742
+candidate: DONE 2
+baseline: [ Info: Parsing completed successfully
+baseline: rep=2 variant=baseline seconds=10.481069638 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+baseline: DONE 2
+baseline: [ Info: Parsing completed successfully
+baseline: rep=3 variant=baseline seconds=10.491488702 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+baseline: DONE 3
+candidate: [ Info: Parsing completed successfully
+candidate: rep=3 variant=candidate seconds=5.136847408 energy_per_site=0.7795418080426915 accepted_last_interval=14742
+candidate: DONE 3
+candidate: [ Info: Parsing completed successfully
+candidate: rep=4 variant=candidate seconds=5.131510695 energy_per_site=0.7795418080426915 accepted_last_interval=14742
+candidate: DONE 4
+baseline: [ Info: Parsing completed successfully
+baseline: rep=4 variant=baseline seconds=10.450724141 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+baseline: DONE 4
+baseline: [ Info: Parsing completed successfully
+baseline: rep=5 variant=baseline seconds=10.508288312 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+baseline: DONE 5
+candidate: [ Info: Parsing completed successfully
+candidate: rep=5 variant=candidate seconds=5.141643821 energy_per_site=0.7795418080426915 accepted_last_interval=14742
+candidate: DONE 5

@@ -1,0 +1,29 @@
+{
+  "scope": "complete public Opt20; imports, priming and driver GC excluded",
+  "baseline_source": "1f7946ac8a5874a6e6b1ff89079b3389924ae099 (same tree as merged main 933100a)",
+  "warm_seconds": {
+    "baseline": [
+      8.345186207,
+      8.360475999,
+      8.385834747,
+      8.380608911,
+      8.367510787
+    ],
+    "candidate": [
+      6.483811775,
+      6.493005151,
+      6.471613565,
+      6.488112183,
+      6.509028374
+    ]
+  },
+  "median_seconds": {
+    "baseline": 8.367510787,
+    "candidate": 6.488112183
+  },
+  "incremental_speedup": 1.2896680191388115,
+  "speedup_vs_frozen_original": 1.612528147773551,
+  "all_whole_opt_checks_passed": 63,
+  "max_abs_total_energy_history_diff": 4.361027095001191e-10,
+  "max_abs_parameter_diff": 3.663447323276614e-11
+}

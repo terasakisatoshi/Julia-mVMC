@@ -135,10 +135,10 @@ end
         fraction==1.0 && (words[3,:,1].=0)
         tape=CuArray(words)
         reference=nothing;future=nothing;second_reference=nothing
-        for triangle in (false,true)
+        for (triangle,delayed) in ((false,false),(true,false),(true,true))
             s=cache_test_state(ns,cfg,slater)
             gpu_wavefunctions!(s)
-            c=GPU.GPUSamplingCache(s)
+            c=GPU.GPUSamplingCache(s;delayed)
             GPU.refresh_sampling_state!(s,c)
             if scenario==:invalid
                 flags=Array(c.valid);flags[1,1]=false;copyto!(c.valid,flags)
@@ -148,6 +148,7 @@ end
             CUDA.seed!(9281)
             GPU.sample_with_cache!(s,c,tape,fraction;empty_destinations=empty,
                 incremental_correlation=incremental,triangle_update=triangle)
+            delayed && @test all(iszero,Array(c.updates.count))
             result=map(Array,(s.configurations,s.counts,s.occupancy,s.accepted,
                 s.overlaps,s.logcorrelations,c.inverse,c.pfaffians,c.valid,
                 c.accepted_since_refactor))
@@ -178,6 +179,7 @@ end
             # after a preceding singular or threshold rebuild.
             GPU.sample_with_cache!(s,c,tape,fraction;empty_destinations=empty,
                 incremental_correlation=incremental,triangle_update=triangle)
+            delayed && @test all(iszero,Array(c.updates.count))
             second=map(Array,(s.configurations,s.counts,s.occupancy,s.accepted,
                 s.overlaps,s.logcorrelations,c.inverse,c.pfaffians,c.valid,
                 c.accepted_since_refactor))
@@ -238,5 +240,60 @@ end
         c=GPU.GPUSamplingCache(s)
         @test GPU.runner_sampling_options(c).triangle_update==(ns>=128)
         @test_throws ArgumentError gpu_sample!(s;steps=0,triangle_update=true)
+    end
+end
+
+@testset "Delayed inverse updates publish complete long packets" begin
+    BLAS.set_num_threads(1)
+    rng=MersenneTwister(548130)
+    # 130 electrons exercises the incomplete final tile/warp as well as L128.
+    for ns in (128,130),fraction in (0.0,0.37),steps in (3,128)
+        batch=3;ne=ns÷2
+        cfg=repeat(reshape(Int32.(0:ns-1),ns,1),1,batch)
+        slater=randn(rng,2ns,2ns,2)
+        for q in 1:2
+            slater[:,:,q]-=transpose(slater[:,:,q])
+        end
+        tape=CuArray(rand(rng,UInt32,5,batch,steps))
+        reference=nothing;future=nothing
+        for delayed in (false,true)
+            s=cache_test_state(ns,cfg,slater);gpu_wavefunctions!(s)
+            c=GPU.GPUSamplingCache(s;delayed)
+            GPU.refresh_sampling_state!(s,c)
+            # Exercise a rebuild that discards previously queued updates.
+            fill!(c.accepted_since_refactor,Int32(ns-2))
+            CUDA.seed!(548130)
+            for packet in 1:2
+                GPU.sample_with_cache!(s,c,tape,fraction;triangle_update=true,
+                    empty_destinations=true,incremental_correlation=true)
+                delayed && @test all(iszero,Array(c.updates.count))
+                cfg_after=Array(s.configurations);inverse=Array(c.inverse)
+                flags=Array(c.valid)
+                for b in 1:batch,q in 1:2
+                    sites=Int.(cfg_after[:,b]).+1
+                    sites[ne+1:end].+=ns
+                    matrix=-slater[sites,sites,q]
+                    @test flags[q,b]
+                    # Independent dense host multiplication, using the same
+                    # existing absolute residual gate as immediate updates.
+                    @test norm(matrix*inverse[:,:,q,b]-I,Inf)<1e-9
+                    @test maximum(abs,inverse[:,:,q,b]+transpose(inverse[:,:,q,b]))==0
+                end
+            end
+            result=map(Array,(s.configurations,s.counts,s.occupancy,s.accepted,
+                s.overlaps,s.logcorrelations,c.pfaffians,c.valid))
+            nextwords=Array(CUDA.rand(UInt32,64))
+            if !delayed
+                reference=result;future=nextwords
+            else
+                for k in (1,2,3,4,8)
+                    @test result[k]==reference[k]
+                end
+                for k in (5,6,7)
+                    @test all(isapprox.(result[k],reference[k];atol=1e-9,rtol=1e-9))
+                end
+                @test nextwords==future
+            end
+        end
     end
 end

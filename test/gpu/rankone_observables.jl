@@ -21,13 +21,20 @@ function check_rankone(data,s,cache)
     cfg=Array(s.configurations)
     direct=GPU.CUDAObservables(s,data;measure_greens=false)
     full=GPU.CUDAObservables(s,data;measure_greens=true,compact_transform=false)
+    @test direct.warp_hamiltonian
+    @test !full.warp_hamiltonian
     @test isempty(direct.transformed)
     @test isempty(direct.batched_inverse.slater_rows)
     @test isempty(direct.batched_inverse.transformed)
     @test !isempty(full.transformed)
     @test !isempty(full.batched_inverse.slater_rows)
     @test !isempty(full.batched_inverse.transformed)
-    gpu_observables!(s,direct;sampling_cache=cache)
+    for source in (nothing,cache)
+        gpu_observables!(s,direct;sampling_cache=source)
+        c=cpu_state(data)
+        expected=[cpu_observables(data,c,cfg[:,b])[1][1] for b in axes(cfg,2)]
+        @test all(isapprox.(vec(Array(direct.values)),expected;atol=1e-9,rtol=1e-9))
+    end
     gpu_observables!(s,full;sampling_cache=cache)
     # The ordered row dot and cuBLAS transform have different accumulation paths.
     # Computed quantities retain the independent observable comparison policy.

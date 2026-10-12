@@ -1,0 +1,13 @@
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Test Summary:                                                      | Pass  Total   Time
+Paired factors preserve independently known Pfaffians and inverses |  540    540  17.4s
+Test Summary:                                                    | Pass  Total   Time
+Paired boundary cancellation, singular sectors and startup reuse |  194    194  30.3s
+Test Summary:                                            | Pass  Total  Time
+Paired factor capacity follows the device scratch budget |    8      8  1.4s
+Test Summary:                                                    | Pass  Total  Time
+Static Hamiltonian gate preserves general and PhysCal transforms |    5      5  0.1s
+Test Summary:                                                  | Pass  Total   Time
+L128 rank-one energies match CPU after twenty cached proposals |   39     39  26.0s

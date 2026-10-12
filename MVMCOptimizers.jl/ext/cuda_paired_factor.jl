@@ -1,15 +1,33 @@
-# Paired skew elimination, adapted from the upper DSKTF2 translation in
-# cuda_cooperative_pf.jl (the same PFAPACK BSD license applies).
-# P*A*P' = U*D*U', with unit upper U and independent 2-by-2 skew blocks D.
-# Eliminating two columns per step supplies both the Pfaffian and inverse:
-# Pf(A) = det(P)*product(D[2k-1,2k]), A^-1 = P'*U'^-1*D^-1*U^-1*P.
-# The trailing update keeps ordered FP64 arithmetic; only the inverse product
-# uses FMA. Strongly cancelling projections use the independent normal path.
-@inline function paired_skew_factor!(A, pivots, diagonal, n, b)
+# Paired upper skew elimination, adapted from PFAPACK DSKTF2 via
+# cuda_cooperative_pf.jl; the same PFAPACK BSD license/provenance applies.
+# P*A*P' = U*D*U', with unit upper U and 2-by-2 skew blocks D.
+# Keep up to K rank-two changes pending in shared memory. Materialize each
+# pivot column before reading it, permute every pending vector with the
+# matrix, and flush the remaining leading block once per panel. Four vectors
+# per pair retain both raw columns and their rounded alpha-scaled columns.
+# FMA and mirrored entries after pivot permutations reassociate arithmetic;
+# independent CPU residuals/Pfaffians and physical-result gates cover it.
+@inline function paired_pending_entry(A,i,j,b,raw,n,pending)
+    @inbounds value=A[i,j,b]
+    @inbounds for p in 1:pending
+        offset=(p-1)*4n
+        uj=raw[offset+j];vj=raw[offset+n+j]
+        if uj!=0.0 || vj!=0.0
+            t1=raw[offset+2n+j];t2=raw[offset+3n+j]
+            ui=raw[offset+i];vi=raw[offset+n+i]
+            value=muladd(-vi,t2,muladd(ui,t1,value))
+        end
+    end
+    return value
+end
+
+@inline function paired_skew_factor!(A, pivots, diagonal, n, b, capacity::Val{K}) where {K}
     lane = threadIdx().x
     stride = blockDim().x
     scalars = CuStaticSharedArray(Float64, 3) # alpha, sign, result
     control = CuStaticSharedArray(Int32, 2)  # pivot, zero even column
+    raw=CuDynamicSharedArray(Float64,4n*K)
+    pending=0
     @inbounds for i in lane:stride:n
         pivots[i, b] = i
     end
@@ -20,19 +38,33 @@
     sync_threads()
     @inbounds for k in n:-2:2
         kk = k - 1
-        if lane == 1
-            kp = 1
-            colmax = abs(A[1, k, b])
-            for j in 2:k-1
-                candidate = abs(A[j, k, b])
-                if candidate > colmax
-                    kp = j
-                    colmax = candidate
+        if pending>0
+            for i in lane:stride:k-1
+                A[i,k,b]=paired_pending_entry(A,i,k,b,raw,n,pending)
+            end
+            sync_threads()
+        end
+        if lane <= 32
+            kp = Int32(1)
+            colmax = abs(A[1,k,b])
+            for j in lane:32:k-1
+                candidate = abs(A[j,k,b])
+                if candidate > colmax || (candidate == colmax && j < kp)
+                    colmax = candidate; kp = Int32(j)
                 end
             end
-            control[1] = colmax == 0.0 ? 0 : kp
-            if colmax == 0.0 && iseven(k)
-                control[2] = 1
+            for offset in (16,8,4,2,1)
+                value = CUDA.shfl_down_sync(typemax(UInt32),colmax,offset)
+                index = CUDA.shfl_down_sync(typemax(UInt32),kp,offset)
+                if value > colmax || (value == colmax && index < kp)
+                    colmax = value; kp = index
+                end
+            end
+            if lane == 1
+                control[1] = colmax == 0.0 ? 0 : kp
+                if colmax == 0.0 && iseven(k)
+                    control[2] = 1
+                end
             end
         end
         sync_threads()
@@ -55,6 +87,11 @@
             for j in k+lane-1:stride:n
                 A[kk, j, b], A[kp, j, b] = A[kp, j, b], A[kk, j, b]
             end
+            for index in lane:stride:4pending
+                p=(index-1)÷4+1;component=(index-1)%4
+                offset=(p-1)*4n+component*n
+                raw[offset+kk],raw[offset+kp]=raw[offset+kp],raw[offset+kk]
+            end
             sync_threads()
             for j in kp+lane-1:stride:kk-1
                 A[j, kk, b] = -A[j, kk, b]
@@ -67,42 +104,44 @@
             end
             sync_threads()
         end
+        if pending>0
+            for i in lane:stride:kk-1
+                A[i,kk,b]=paired_pending_entry(A,i,kk,b,raw,n,pending)
+            end
+        end
         if lane == 1
             scalars[1] = CUDA.div_rn(1.0, A[kk, k, b])
         end
         sync_threads()
         alpha = scalars[1]
-        # Retain the original (a + b*c) - d*e update order; the two
-        # source columns remain unchanged until every trailing update finishes.
-        width = k - 2
-        # One warp owns a column. Its lanes touch neighboring rows without
-        # scanning the discarded lower triangle or dividing per entry.
-        warp = (lane-1) ÷ 32+1
-        warp_lane = (lane-1) % 32+1
-        warps = stride ÷ 32
-        for j in warp:warps:width
-            if A[j,k,b] != 0.0 || A[j,kk,b] != 0.0
-                temp1 = CUDA.mul_rn(alpha,A[j,kk,b])
-                temp2 = CUDA.mul_rn(alpha,A[j,k,b])
-                for i in warp_lane:32:j-1
-                    first = CUDA.add_rn(A[i,j,b],CUDA.mul_rn(A[i,k,b],temp1))
-                    A[i,j,b] = CUDA.add_rn(first,-CUDA.mul_rn(A[i,kk,b],temp2))
-                end
-            end
-        end
-        sync_threads()
+        width=k-2
+        next=pending+1
+        offset=(next-1)*4n
         for j in lane:stride:width
-            A[j, j, b] = 0.0
             u=A[j,kk,b];v=A[j,k,b]
-            A[j,kk,b]=CUDA.mul_rn(v,alpha)
-            A[j,k,b]=-CUDA.mul_rn(u,alpha)
+            raw[offset+j]=v;raw[offset+n+j]=u
+            A[j,j,b]=0.0
+            tv=CUDA.mul_rn(v,alpha);tu=CUDA.mul_rn(u,alpha)
+            raw[offset+2n+j]=tu;raw[offset+3n+j]=tv
+            A[j,kk,b]=tv;A[j,k,b]=-tu
         end
-        if lane == 1
-            pivots[kk, b] = kp
+        if lane==1
+            pivots[kk,b]=kp
             diagonal[k÷2,b]=A[kk,k,b]
             A[kk,k,b]=0.0
         end
         sync_threads()
+        pending=next
+        if pending==K
+            warp=(lane-1)÷32+1;warplane=(lane-1)%32+1;warps=stride÷32
+            for j in warp:warps:width
+                for i in warplane:32:j-1
+                    A[i,j,b]=paired_pending_entry(A,i,j,b,raw,n,pending)
+                end
+            end
+            sync_threads()
+            pending=0
+        end
     end
     if lane == 1
         pf = 1.0
@@ -115,23 +154,54 @@
     return scalars[3]
 end
 
-function paired_skew_factor_kernel!(values, A, pivots, diagonal, n)
-    b = blockIdx().x
-    pf = paired_skew_factor!(A, pivots, diagonal, n, b)
-    if threadIdx().x == 1
-        @inbounds values[b] = pf
+function paired_skew_factor_kernel!(values,A,pivots,diagonal,n,capacity::Val{K}) where {K}
+    b=blockIdx().x
+    pf=paired_skew_factor!(A,pivots,diagonal,n,b,capacity)
+    if threadIdx().x==1
+        @inbounds values[b]=pf
     end
     return nothing
 end
 
-
-function paired_identity_kernel!(M,n,count)
-    index=(blockIdx().x-1)*blockDim().x+threadIdx().x
-    index>n*n*count && return nothing
-    i=(index-1)%n+1;j=((index-1)÷n)%n+1
-    @inbounds M[index]=i==j ? 1.0 : 0.0
+# Invert U*D*U' by extending its leading block two columns at a time.
+# [B -B*V; -V'*B Dpair^-1+V'*B*V] is the next inverse block.
+function paired_growing_inverse!(B,U,diagonal,n)
+    b=blockIdx().x;lane=threadIdx().x;stride=blockDim().x
+    shared=CuDynamicSharedArray(Float64,4n)
+    @inbounds for k in 1:2:n
+        m=k-1
+        for i in lane:stride:m
+            shared[i]=U[i,k,b];shared[n+i]=U[i,k+1,b]
+        end
+        sync_threads()
+        for i in lane:stride:m
+            x=0.0;y=0.0
+            for j in 1:m
+                value=B[i,j,b]
+                x=muladd(value,shared[j],x)
+                y=muladd(value,shared[n+j],y)
+            end
+            shared[2n+i]=x;shared[3n+i]=y
+        end
+        sync_threads()
+        for i in lane:stride:m
+            x=shared[2n+i];y=shared[3n+i]
+            B[i,k,b]=-x;B[k,i,b]=x
+            B[i,k+1,b]=-y;B[k+1,i,b]=y
+        end
+        if lane==1
+            value=-1.0/diagonal[(k+1)÷2,b]
+            for i in 1:m
+                value=muladd(shared[i],shared[3n+i],value)
+            end
+            B[k,k,b]=0.0;B[k+1,k+1,b]=0.0
+            B[k,k+1,b]=value;B[k+1,k,b]=-value
+        end
+        sync_threads()
+    end
     return nothing
 end
+
 function paired_permutation_kernel!(perm,piv,n,count)
     b=(blockIdx().x-1)*blockDim().x+threadIdx().x
     b>count && return nothing
@@ -149,35 +219,5 @@ function paired_permute_inverse_kernel!(output,input,perm,n,count)
     index>n*n*count && return nothing
     i=(index-1)%n+1;j=((index-1)÷n)%n+1;b=(index-1)÷(n*n)+1
     @inbounds output[i,j,b]=input[perm[i,b],perm[j,b],b]
-    return nothing
-end
-function paired_reciprocal_diagonal_kernel!(output,input)
-    i=(blockIdx().x-1)*blockDim().x+threadIdx().x
-    i>length(input) && return nothing
-    @inbounds output[i]=CUDA.div_rn(1.0,input[i])
-    return nothing
-end
-function paired_tridiagonal_solve!(C,M,diagonal,n,count)
-    index=(blockIdx().x-1)*blockDim().x+threadIdx().x
-    index>n*n*count && return nothing
-    i=(index-1)%n+1;j=((index-1)÷n)%n+1;b=(index-1)÷(n*n)+1
-    @inbounds C[i,j,b]=iseven(i) ? CUDA.mul_rn(M[i-1,j,b],diagonal[i÷2,b]) : CUDA.mul_rn(-M[i+1,j,b],diagonal[(i+1)÷2,b])
-    return nothing
-end
-function paired_triangular_skew_product!(output,MT,C,n,count)
-    i=(blockIdx().x-1)*blockDim().x+threadIdx().x
-    j=(blockIdx().y-1)*blockDim().y+threadIdx().y
-    b=blockIdx().z
-    (i>n || j>n || i>j) && return nothing
-    value=0.0
-    @inbounds if i<j
-        for k in 1:i
-            value=muladd(MT[i,k,b],C[k,j,b],value)
-        end
-        output[i,j,b]=value
-        output[j,i,b]=-value
-    else
-        output[i,i,b]=0.0
-    end
     return nothing
 end

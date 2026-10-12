@@ -53,6 +53,11 @@ passed without test exclusions or tolerance changes.
 
 ## Reproduction
 
+Run this historical comparison at the PR #85 merge `cb12901`, which includes
+the measured production source and this report. Its frozen kernel still uses
+the surrounding production runner; later changes alter the comparison even
+when the driver is unchanged.
+
 From the repository root, with the pinned `test/gpu` environment and native
 reference libraries built:
 

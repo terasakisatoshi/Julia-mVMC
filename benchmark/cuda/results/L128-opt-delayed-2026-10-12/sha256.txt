@@ -1,0 +1,17 @@
+002e9eb7c5d154eb1c910be4646dc4211bceac89fbbc76a119a029939b1dcfdb  benchmark/cuda/results/L128-opt-delayed-2026-10-12/README.md
+56a025181065e2f1e34c815e8874c8851f437a2d35f1374f89d7d7d19eff6358  benchmark/cuda/results/L128-opt-delayed-2026-10-12/baseline-ab-dispatch.jl
+aeee3292e433628591d57e3bd9aa47e8d6dfbcfc12263b1a618a21aaa52e8015  benchmark/cuda/results/L128-opt-delayed-2026-10-12/focused-cache-derivatives.log
+f3f101ace2242ffab8889a5712a00279a8c101733b90a98952bba91db1841a6d  benchmark/cuda/results/L128-opt-delayed-2026-10-12/focused-l128.log
+6f818f5b2d47a1012164794ed4eeb92ec4de7dd07340b3bf3c0a51712becb9eb  benchmark/cuda/results/L128-opt-delayed-2026-10-12/full-gpu-suite.log
+f38e400177852d2abad1db51b46d15bc70687513511fd0f1cc6fcc51746603f8  benchmark/cuda/results/L128-opt-delayed-2026-10-12/inverse-diagnostic.jl
+2f6311e4b96a0892c8cc2fe16302f2eade3e1eed5126b80d465011b270654a29  benchmark/cuda/results/L128-opt-delayed-2026-10-12/inverse-diagnostic.log
+c5cdf6291ffdd781605ae037c3997c1adb3d73c22cb9af4b8a830bc4ae782571  benchmark/cuda/results/L128-opt-delayed-2026-10-12/old-cache-oracle-rejected.log
+554227af8066793a676fe0f5e4fe146af72593c8249b858a6e9e7c9ca3359eba  benchmark/cuda/results/L128-opt-delayed-2026-10-12/verified-timings.json
+e8f2a64e885b01ac15ea140a70e3337e7f67e4849d83d5f57dc6c3cfeec5efa5  benchmark/cuda/results/L128-opt-delayed-2026-10-12/whole-opt-ab-driver.jl
+c1eea4a3f569c837ba0e5743c112d73003bee24b8c4484ee50e0fb48928a2e4c  benchmark/cuda/results/L128-opt-delayed-2026-10-12/whole-opt-ab.log
+f49eea7fba546f44db24441ac5ed84eed8a42c97824d34b7aa7b7a368a79cd9d  MVMCOptimizers.jl/ext/MVMCCUDAExt.jl
+645bcbbeb8aae42516e20daa3ebb2c9df63113123d76b1c5d50e0967dc0b37cb  MVMCOptimizers.jl/ext/cuda_sampling_update.jl
+83f91222644c3620c3cfddf804ca8168d4f62cab062690a40849ffab0daa754d  MVMCOptimizers.jl/ext/cuda_delayed_sampling.jl
+111808a7040f5bf19dc915ccf58c3d0d0eb6de47f0611018d51535032510e1d4  MVMCOptimizers.jl/ext/cuda_sampling_correlation.jl
+86b070362c013668bbb0fe61e2038a1bba67087e848d3b8f1d80ae5a80283d9e  MVMCOptimizers.jl/ext/cuda_sparse_contraction.jl
+092e9605bae758d42d79ccd44fdaf3480da0bfb7c9b58a761b61b7f92ad03892  MVMCOptimizers.jl/ext/cuda_runners.jl

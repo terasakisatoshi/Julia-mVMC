@@ -1,0 +1,42 @@
+scope=complete public Opt20; FP64 GPU1 RTX3060; Julia_threads=1 BLAS_threads=1 warmup128 interval128 walkers320 seed79; launch/imports and GC outside clocks
+Julia=1.13.1 checkpoint_sha256=36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8 namelist_sha256=8c12fb80972128ac0921a15f957a7bc00b38ac9cc6cf0d3e0e0dd6d9efdbab00
+ab_kernel_source_sha256=56a025181065e2f1e34c815e8874c8851f437a2d35f1374f89d7d7d19eff6358
+production_source_sha256 cuda_sampling_update.jl 645bcbbeb8aae42516e20daa3ebb2c9df63113123d76b1c5d50e0967dc0b37cb
+production_source_sha256 cuda_runners.jl 092e9605bae758d42d79ccd44fdaf3480da0bfb7c9b58a761b61b7f92ad03892
+production_source_sha256 cuda_state.jl 138c08915e0c6914750d36adcbcae71a632a80b165b16734ef536b4a0e0e2261
+rep=0 kind=opt variant=baseline seconds=60.188957226 energy_per_site=0.7795418080431082 accepted_last_interval=14742
+rep=0 kind=opt variant=candidate seconds=10.974685466 energy_per_site=0.7795418080427028 accepted_last_interval=14742
+rep=1 kind=opt variant=baseline seconds=8.345186207 energy_per_site=0.7795418080431082 accepted_last_interval=14742
+rep=1 kind=opt variant=candidate seconds=6.483811775 energy_per_site=0.7795418080427028 accepted_last_interval=14742
+max_abs_energy_diff=4.361027095001191e-10 max_abs_parameter_diff=3.663447323276614e-11
+rep=2 kind=opt variant=candidate seconds=6.493005151 energy_per_site=0.7795418080427028 accepted_last_interval=14742
+max_abs_energy_diff=4.361027095001191e-10 max_abs_parameter_diff=3.663447323276614e-11
+rep=2 kind=opt variant=baseline seconds=8.360475999 energy_per_site=0.7795418080431082 accepted_last_interval=14742
+max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=3 kind=opt variant=baseline seconds=8.385834747 energy_per_site=0.7795418080431082 accepted_last_interval=14742
+max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=3 kind=opt variant=candidate seconds=6.471613565 energy_per_site=0.7795418080427028 accepted_last_interval=14742
+max_abs_energy_diff=4.361027095001191e-10 max_abs_parameter_diff=3.663447323276614e-11
+rep=4 kind=opt variant=candidate seconds=6.488112183 energy_per_site=0.7795418080427028 accepted_last_interval=14742
+max_abs_energy_diff=4.361027095001191e-10 max_abs_parameter_diff=3.663447323276614e-11
+rep=4 kind=opt variant=baseline seconds=8.380608911 energy_per_site=0.7795418080431082 accepted_last_interval=14742
+max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=5 kind=opt variant=baseline seconds=8.367510787 energy_per_site=0.7795418080431082 accepted_last_interval=14742
+max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=5 kind=opt variant=candidate seconds=6.509028374 energy_per_site=0.7795418080427028 accepted_last_interval=14742
+max_abs_energy_diff=4.361027095001191e-10 max_abs_parameter_diff=3.663447323276614e-11
+Test Summary:                                      | Pass  Total     Time
+whole opt delayed combined repeated-control parity |   63     63  1m17.7s
+summary kind=opt baseline_seconds=[8.345186207, 8.360475999, 8.385834747, 8.380608911, 8.367510787] candidate_seconds=[6.483811775, 6.493005151, 6.471613565, 6.488112183, 6.509028374] baseline_median=8.367510787 candidate_median=6.488112183 speedup=1.2896680191388115
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully

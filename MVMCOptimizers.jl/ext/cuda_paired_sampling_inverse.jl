@@ -1,22 +1,23 @@
-# Workspace owned by one Opt run; all device buffers and pointer tables remain
-# alive through their asynchronous cuBLAS consumers. No process-wide cache.
+# One Opt run owns the factors and scratch. Growing the inverse reuses the
+# native LU buffer; no separate triangular inverse/product matrices or pointer
+# tables are needed. Oversized workspaces retain the native LU route.
 struct PairedSamplingInverse
     native::BatchedSamplingInverse
     diagonal::CuMatrix{Float64}
-    inverse_diagonal::CuMatrix{Float64}
-    C::CuArray{Float64,3}       # D^-1 * U^-1
-    MT::CuArray{Float64,3}      # transpose(U^-1), for coalesced product reads
-    product::CuArray{Float64,3} # inverse before undoing pivot permutations
     permutation::CuMatrix{Int32}
     fallback::CuVector{Bool}
-    factor_ptrs::CuVector{CuPtr{Float64}}
-    M_ptrs::CuVector{CuPtr{Float64}}
-    one::CuVector{Float64}
+    capacity::Int
+end
+function paired_factor_capacity(n,budget=CUDA.attribute(CUDA.device(),CUDA.DEVICE_ATTRIBUTE_MAX_SHARED_MEMORY_PER_BLOCK)-1024)
+    return clamp(Int(fld(budget,32n)),0,4)
 end
 PairedSamplingInverse(s::CUDAState) = PairedSamplingInverse(BatchedSamplingInverse(s),size(s.configurations,2))
-function PairedSamplingInverse(work::BatchedSamplingInverse,batch::Integer)
+function PairedSamplingInverse(work::BatchedSamplingInverse,batch::Integer;
+                               capacity::Integer=paired_factor_capacity(size(work.lu,1)))
     n,_,count=size(work.lu)
-    return PairedSamplingInverse(work,CUDA.zeros(Float64,n÷2,count),CUDA.zeros(Float64,n÷2,count),similar(work.lu),similar(work.lu),similar(work.lu),similar(work.pf_pivots),CUDA.zeros(Bool,batch),CuArray([pointer(work.factors,(m-1)*n*n+1) for m in 1:count]),work.lu_ptrs,CuArray([1.0]))
+    0<=capacity<=paired_factor_capacity(n) || throw(ArgumentError("paired factor capacity exceeds shared-memory budget"))
+    return PairedSamplingInverse(work,CUDA.zeros(Float64,n÷2,count),
+        similar(work.pf_pivots),CUDA.zeros(Bool,batch),Int(capacity))
 end
 
 # One writer per matrix. Inspect every inverse entry, including singular cases
@@ -68,14 +69,14 @@ function refresh_sampling_state!(s,cache::GPUSamplingCache,extra::PairedSampling
     work=extra.native
     # Startup has already computed normal Pfaffians; reuse them and its LU
     # inverse. Paired elimination is used after parameter changes in Opt.
-    if initial_pfaffians !== nothing
+    if initial_pfaffians !== nothing || extra.capacity==0
+        extra.capacity==0 && fill!(extra.fallback,true)
         return refresh_sampling_state!(s,cache,work;initial_pfaffians)
     end
     cache.owner===s || throw(ArgumentError("sampling cache belongs to a different state"))
     n,batch=2s.nelec,size(s.configurations,2);count=batch*s.nqp
     @cuda threads=256 blocks=cld(n*n*count,256) fastmath=false fill_batched_slater!(work.lu,work.factors,s.configurations,s.slater,s.nsite,s.nelec,batch,count)
     paired_factor_inverse!(extra,n,count)
-    fill!(work.lu_info,Int32(0))
     @cuda threads=128 blocks=count paired_inverse_status!(work.inverse_info,work.inverse,n)
     @cuda threads=128 blocks=cld(batch,128) fastmath=false paired_fallback_flags!(
         extra.fallback,work.pfaffians,s.weights,work.inverse_info,batch,s.nqp)
@@ -86,17 +87,28 @@ function refresh_sampling_state!(s,cache::GPUSamplingCache,extra::PairedSampling
     return cache
 end
 
-# Factor storage must contain the gathered skew matrices on entry.
+# Factor storage contains the gathered skew matrices on entry. The LU buffer
+# is scratch for the leading-block inverse and the final permutation publishes
+# into native.inverse. Both native and paired paths retain independent status.
 function paired_factor_inverse!(extra::PairedSamplingInverse,n,count)
+    count==0 && return nothing
     work=extra.native
-    @cuda threads=128 blocks=count maxregs=64 fastmath=false paired_skew_factor_kernel!(work.pfaffians,work.factors,work.pf_pivots,extra.diagonal,n)
-    @cuda threads=256 blocks=cld(n*n*count,256) paired_identity_kernel!(work.lu,n,count)
-    CUDA.cuBLAS.cublasDtrsmBatched(CUDA.cuBLAS.handle(),'L','U','N','U',n,n,extra.one,extra.factor_ptrs,n,extra.M_ptrs,n,count)
-    @cuda threads=256 blocks=cld(length(extra.diagonal),256) fastmath=false paired_reciprocal_diagonal_kernel!(extra.inverse_diagonal,extra.diagonal)
-    @cuda threads=256 blocks=cld(n*n*count,256) fastmath=false paired_tridiagonal_solve!(extra.C,work.lu,extra.inverse_diagonal,n,count)
-    permutedims!(extra.MT,work.lu,(2,1,3))
-    @cuda threads=(32,8) blocks=(cld(n,32),cld(n,8),count) fastmath=false paired_triangular_skew_product!(extra.product,extra.MT,extra.C,n,count)
-    @cuda threads=128 blocks=cld(count,128) paired_permutation_kernel!(extra.permutation,work.pf_pivots,n,count)
-    @cuda threads=256 blocks=cld(n*n*count,256) paired_permute_inverse_kernel!(work.inverse,extra.product,extra.permutation,n,count)
+    capacity=extra.capacity
+    if capacity==0
+        copyto!(work.lu,work.factors)
+        @cuda threads=128 blocks=count maxregs=64 fastmath=false cooperative_pfaffian_kernel!(
+            work.pfaffians,work.factors,work.pf_pivots,n)
+        sampling_lu_inverse!(work,n,count)
+        return nothing
+    end
+    @cuda threads=64 blocks=count shmem=32n*capacity maxregs=64 fastmath=false paired_skew_factor_kernel!(
+        work.pfaffians,work.factors,work.pf_pivots,extra.diagonal,n,Val(capacity))
+    @cuda threads=128 blocks=count shmem=32n maxregs=64 fastmath=false paired_growing_inverse!(
+        work.lu,work.factors,extra.diagonal,n)
+    @cuda threads=128 blocks=cld(count,128) paired_permutation_kernel!(
+        extra.permutation,work.pf_pivots,n,count)
+    @cuda threads=256 blocks=cld(n*n*count,256) paired_permute_inverse_kernel!(
+        work.inverse,work.lu,extra.permutation,n,count)
+    fill!(work.lu_info,Int32(0))
     return nothing
 end

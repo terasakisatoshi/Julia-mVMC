@@ -74,10 +74,10 @@ function validate_initial_walkers(s::CUDAState, configurations)
     return nothing
 end
 
-function runner_sampling_cache(s::CUDAState)
+function runner_sampling_cache(s::CUDAState;delayed::Bool=false)
     mode = get(ENV,"JULIA_MVMC_GPU_SAMPLING","update")
     mode in ("update","refactor") || throw(ArgumentError("GPU sampling must be update or refactor"))
-    return s.nsite >= 64 && mode == "update" ? GPUSamplingCache(s) : nothing
+    return s.nsite >= 64 && mode == "update" ? GPUSamplingCache(s;delayed=delayed && supports_delayed_sampling(s)) : nothing
 end
 
 function runner_sampling_options(cache)
@@ -158,7 +158,7 @@ function gpu_para_opt_runner!(data::ExpertModeData; configurations, nsteps::Inte
     o = CUDAObservables(s, data; measure_greens=false)
     sr = CUDASR(s, data)
     solver = CUDASRSolver(length(s.parameters))
-    sampler = runner_sampling_cache(s)
+    sampler = runner_sampling_cache(s;delayed=true)
     gauge = CUDAParameterGauge(data)
     sampling_inverse = sampler === nothing ? nothing :
         (2s.nelec >= 128 ? PairedSamplingInverse(s) : BatchedSamplingInverse(s))

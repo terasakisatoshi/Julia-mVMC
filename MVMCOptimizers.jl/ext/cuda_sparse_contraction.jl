@@ -54,6 +54,11 @@ function fused_sparse_derivative_kernel!(O, colptr, coordinates, coefficients,
     @inbounds for q in 1:nq
         !valid[q,b] && return nothing
     end
+    # One reciprocal per output warp instead of a division per nonzero term.
+    # Extreme magnitudes retain division to avoid reciprocal overflow or loss
+    # of relative precision in the subnormal range.
+    inverse_overlap = 1.0/overlaps[b]
+    safe_reciprocal = isfinite(inverse_overlap) && abs(inverse_overlap)>=floatmin(Float64)
     result = 0.0
     @inbounds for k in colptr[p]+lane:32:colptr[p+1]-1
         ri = Int(coordinates.ri[k])
@@ -63,7 +68,8 @@ function fused_sparse_derivative_kernel!(O, colptr, coordinates, coefficients,
         j = -Int(mapping[rj,b])
         if i > 0 && j > 0 && i < j
             cofactor = pf[q,b]*inv[j,i,q,b]
-            sensitivity = -weights[q]*cofactor/overlaps[b]
+            sensitivity = safe_reciprocal ? -weights[q]*cofactor*inverse_overlap :
+                -weights[q]*cofactor/overlaps[b]
             result += coefficients[k]*sensitivity
         end
     end

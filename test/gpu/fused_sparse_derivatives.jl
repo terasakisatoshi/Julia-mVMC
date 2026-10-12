@@ -58,3 +58,19 @@ const GPU=Base.get_extension(MVMCOptimizers,:MVMCCUDAExt)
     @test Array(output) ≈ expected atol=1e-11 rtol=1e-11
     @test all(iszero,Array(output)[1,:])
 end
+
+@testset "Fused derivative reciprocal preserves extreme finite ratios" begin
+    # Subnormal overlap overflows its reciprocal; a huge overlap has a
+    # subnormal reciprocal. Both must retain division of the finite numerator.
+    overlaps=[nextfloat(0.0),1e308,0.5,-0.5]
+    pf=reshape(copy(overlaps),1,:)
+    inverse=zeros(2,2,1,4);inverse[2,1,:,:].=1
+    mapping=repeat(reshape(Int32[-1,-2],2,1),1,4)
+    coordinates=(;ri=CuArray(Int32[1]),rj=CuArray(Int32[2]),q=CuArray(Int32[1]))
+    output=CUDA.zeros(Float64,1,4)
+    @cuda threads=128 blocks=1 fastmath=false GPU.fused_sparse_derivative_kernel!(
+        output,CuArray(Int32[1,2]),coordinates,CuArray([1.0]),CuArray(mapping),
+        CuArray(inverse),CuArray(pf),CUDA.fill(true,1,4),CuArray(overlaps),
+        CuArray([1.0]),1,1,1,4)
+    @test all(isapprox.(Array(output),-1.0;atol=1e-15,rtol=1e-15))
+end

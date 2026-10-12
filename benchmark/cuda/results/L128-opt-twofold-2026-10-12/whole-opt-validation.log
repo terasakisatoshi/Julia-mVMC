@@ -1,0 +1,14 @@
+rep=1 variant=baseline max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=1 variant=candidate max_abs_energy_diff=5.674110070685856e-10 max_abs_parameter_diff=4.841660405929815e-11
+rep=2 variant=baseline max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=2 variant=candidate max_abs_energy_diff=5.674110070685856e-10 max_abs_parameter_diff=4.841660405929815e-11
+rep=3 variant=baseline max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=3 variant=candidate max_abs_energy_diff=5.674110070685856e-10 max_abs_parameter_diff=4.841660405929815e-11
+rep=4 variant=baseline max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=4 variant=candidate max_abs_energy_diff=5.674110070685856e-10 max_abs_parameter_diff=4.841660405929815e-11
+rep=5 variant=baseline max_abs_energy_diff=0.0 max_abs_parameter_diff=0.0
+rep=5 variant=candidate max_abs_energy_diff=5.674110070685856e-10 max_abs_parameter_diff=4.841660405929815e-11
+Test Summary:                                                | Pass  Total  Time
+Independent public Opt20: same control and numerical results |   70     70  0.5s
+baseline_seconds=[10.434381148, 10.481069638, 10.491488702, 10.450724141, 10.508288312] candidate_seconds=[5.131494781, 5.125963152, 5.136847408, 5.131510695, 5.141643821]
+baseline_median=10.481069638 candidate_median=5.131510695 speedup=2.0424920186198694 frozen_original_speedup=2.0388271881015734

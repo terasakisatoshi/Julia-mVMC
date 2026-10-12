@@ -7,6 +7,7 @@ const GPU=Base.get_extension(CPU,:MVMCCUDAExt)
 include("cpu_oracle.jl")
 include("cancellation_configuration.jl")
 
+for delayed in (false,true)
 @testset "Cached L128 projected sampler follows shared20-step controls" begin
     path=joinpath(@__DIR__,"..","..","benchmark","cuda","inputs","hubbard_chain_L128","namelist.def")
     data,rng=GPU.prepared_gpu_data(path;seed=79)
@@ -14,7 +15,7 @@ include("cancellation_configuration.jl")
     cfg[:,1].=CANCELLATION_CFG
     fresh=gpu_state(data;configurations=cfg)
     cached=gpu_state(data;configurations=cfg)
-    work=GPU.GPUSamplingCache(cached)
+    work=GPU.GPUSamplingCache(cached;delayed)
     GPU.refresh_sampling_state!(cached,work,GPU.BatchedSamplingInverse(cached))
     @test all(isapprox.(Array(cached.overlaps),Array(fresh.overlaps);atol=1e-9,rtol=1e-9))
     c=cpu_state(data)
@@ -54,7 +55,7 @@ end
     cfg[:,1].=CANCELLATION_CFG
     fresh=gpu_state(data;configurations=cfg)
     cached=gpu_state(data;configurations=cfg)
-    work=GPU.GPUSamplingCache(cached)
+    work=GPU.GPUSamplingCache(cached;delayed)
     GPU.refresh_sampling_state!(cached,work,GPU.BatchedSamplingInverse(cached))
     localspins=Array(fresh.localspins)
     tape=rand(MersenneTwister(128792),UInt32,5,4,20)
@@ -82,3 +83,5 @@ end
         @test all(isapprox.(Array(cached.logcorrelations),Array(fresh.logcorrelations);atol=1e-13,rtol=1e-13))
     end
 end
+
+end # update strategy
