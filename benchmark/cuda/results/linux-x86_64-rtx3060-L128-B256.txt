@@ -1,9 +1,9 @@
-CUDA toolchain: 
+CUDA toolchain:
 - runtime 13.4.0, artifact installation
 - driver 580.178.4 for CUDA 13.3, forward-compatible
 - compiler 13.4.92, artifact installation
 
-CUDA libraries: 
+CUDA libraries:
 - cuBLAS: 13.8.0
 - cuSPARSE: 12.8.6
 - cuSOLVER: 12.3.4
@@ -12,7 +12,7 @@ CUDA libraries:
 - CUPTI: 2026.3.1 (API 13.4.1)
 - NVML: 13.0.0+580.178.4
 
-Julia packages: 
+Julia packages:
 - CUDACore: 6.4.2
 - GPUArrays: 11.5.16
 - GPUCompiler: 2.13.4

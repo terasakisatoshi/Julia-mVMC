@@ -18,3 +18,5 @@ Only the Expert inputs used by `namelist.def` and the generator input are kept.
 Geometry/plot files are omitted. Benchmark scripts override walker batch size;
 the300-step/300-sample values in ModPara are input provenance, not the number of
 iterations measured by the fixed-configuration benchmark.
+
+Trailing whitespace in generated input files is normalized; numerical values are unchanged.
