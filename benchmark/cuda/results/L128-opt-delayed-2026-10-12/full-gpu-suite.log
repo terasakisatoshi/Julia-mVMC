@@ -1,0 +1,96 @@
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+┌ Info: CPU/GPU numerical evidence
+│   model = "hubbard_chain_real"
+│   derivative_error = 2.4868995751603507e-14
+│   observable_error = 7.460698725481052e-14
+│   sr_condition = 2297.1442304275424
+│   update_error = 1.1362438767648086e-15
+└   sr_residual = 1.3772427773964935e-16
+[ Info: Parsing completed successfully
+┌ Info: CPU/GPU numerical evidence
+│   model = "heisenberg_chain_real"
+│   derivative_error = 1.9984014443252818e-15
+│   observable_error = 3.907985046680551e-14
+│   sr_condition = 5.330449172344122e6
+│   update_error = 1.5102724626459008e-11
+└   sr_residual = 1.0671017194339785e-16
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+┌ Info: Exhaustive Green comparison
+│   quantities = 5259
+└   max_error = 2.5934809855243657e-13
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+correlation delta nsite=6 valid_operators=600
+correlation delta nsite=128 valid_operators=1717
+transformed Slater valid_operators=600 max_old_error=1.7763568394002505e-15 max_CPU_error=3.3084646133829665e-14
+L128 direct Slater maximum CPU difference: 0.0
+cache reuse maxerrors obs=8.08597633294994e-12 O=1.8871015861066098e-13
+cache inverse maximum normalized residual=1.816662613099625e-14
+cache reuse maxerrors obs=7.916241884231567e-7 O=3.620516508817673e-8
+cache inverse maximum normalized residual=2.806273624908507e-16
+compact physical columns=Int32[1, 129]
+compact versus full GEMM maximum absolute difference=1.687538997430238e-14
+first compact versus full difference index=CartesianIndex(3, 1) values=(0.8719670799501332, 0.8719670799501335)
+cache reuse maxerrors obs=1.056932319443149e-12 O=1.9562129693895258e-13
+cache inverse maximum normalized residual=2.703724994646917e-14
+compact physical columns=Int32[1, 129]
+compact versus full GEMM maximum absolute difference=2.3283064365386963e-8
+first compact versus full difference index=CartesianIndex(131, 1) values=(355035.9555828361, 355035.9555828364)
+cache reuse maxerrors obs=1.9297003746032715e-6 O=6.961636245250702e-8
+cache inverse maximum normalized residual=3.8794206186588656e-16
+compact physical columns=Int32[1, 129]
+compact versus full GEMM maximum absolute difference=2.6645352591003757e-15
+first compact versus full difference index=CartesianIndex(133, 1) values=(-0.13795302886552877, -0.1379530288655286)
+cache reuse maxerrors obs=1.2363443602225743e-12 O=2.5368596112684827e-14
+cache inverse maximum normalized residual=3.5202070417331422e-15
+Test Summary:                 |  Pass  Total     Time
+Complete production GPU suite | 10391  10391  5m12.7s

@@ -1,0 +1,12 @@
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Test Summary:                                                | Pass  Total   Time
+Cached L128 projected sampler follows shared20-step controls |  125    125  37.8s
+Test Summary:                                                      | Pass  Total  Time
+Empty-rank hopping and integer count deltas match translated tapes |  120    120  1.0s
+Test Summary:                                                | Pass  Total  Time
+Cached L128 projected sampler follows shared20-step controls |  125    125  5.2s
+Test Summary:                                                      | Pass  Total  Time
+Empty-rank hopping and integer count deltas match translated tapes |  120    120  1.0s
