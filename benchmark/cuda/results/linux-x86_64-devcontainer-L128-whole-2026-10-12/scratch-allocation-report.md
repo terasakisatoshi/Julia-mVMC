@@ -38,5 +38,7 @@ The first microbenchmark retained temporary workspace results long enough to exh
 - `scratch-allocation-focused-gates.log` and `scratch-allocation-focused-driver.jl`
 - `scratch-allocation-setup-benchmark.jl`, `scratch-allocation-setup-before.log`, `scratch-allocation-setup-after.log`
 - `scratch-allocation-before-source-sha256.txt`, `scratch-allocation-after-source-sha256.txt`, `scratch-allocation-input-sha256.txt`
-- `scratch-allocation-tested.patch`
+- `scratch-allocation-tested.patch.b64` preserves the exact tested patch, including
+  its blank context-line markers. Restore it with
+  `base64 --decode scratch-allocation-tested.patch.b64 > scratch-allocation-tested.patch`.
 - `scratch-allocation-excluded-oom.log`, `scratch-allocation-excluded-oom-benchmark.jl`
