@@ -108,7 +108,7 @@ end
         CuArray(Float64[]),CuArray(GPU.GPUOperator[]),CuArray(GPU.GPUOperator[]),
         CuArray(GPU.GPUOperator[]),CuArray(GPU.GPUOperator[]),o.inverse,o.pfaffians,o.valid,
         CUDA.zeros(Float64,n,n,0),CUDA.zeros(Float64,n,n,0),
-        CUDA.zeros(Float64,batch,n,2ns,nq),CUDA.zeros(Float64,0,batch),work)
+        CUDA.zeros(Float64,batch,n,2ns,nq),CUDA.zeros(Float64,0,batch),work,nothing)
     GPU.derivatives!(state,sr,workspace)
     @test Array(sr.derivatives) ≈ [Float64(ne) 0.0;4/3 0.0] atol=1e-12 rtol=1e-12
     @test Array(sr.derivatives)[1,:] ≈ Float64.(vec(Array(state.counts))) atol=0 rtol=0

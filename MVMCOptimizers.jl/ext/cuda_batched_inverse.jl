@@ -19,7 +19,7 @@ struct BatchedInverse
     target_sites::CuMatrix{Int32}
     target_map::CuMatrix{Int32}
 end
-function BatchedInverse(s::CUDAState)
+function BatchedInverse(s::CUDAState; allocate_transform::Bool=true)
     n = 2s.nelec
     count = size(s.configurations,2)*s.nqp
     lu = CUDA.zeros(Float64,n,n,count)
@@ -29,7 +29,8 @@ function BatchedInverse(s::CUDAState)
     return BatchedInverse(lu,similar(lu),inverse,lu_ptrs,inverse_ptrs,
         CUDA.zeros(Int32,n,count),CUDA.zeros(Int32,n,count),CUDA.zeros(Float64,count),
         CUDA.zeros(Int32,count),CUDA.zeros(Int32,count),
-        CUDA.zeros(Float64,n,2s.nsite-n,count),CUDA.zeros(Float64,n,2s.nsite-n,count),
+        CUDA.zeros(Float64,n,allocate_transform ? 2s.nsite-n : 0,count),
+        CUDA.zeros(Float64,n,allocate_transform ? 2s.nsite-n : 0,count),
         CuArray([1.0]),CuArray([0.0]),CUDA.zeros(Int32,2s.nsite-n,size(s.configurations,2)),
         CUDA.zeros(Int32,2s.nsite,size(s.configurations,2)))
 end

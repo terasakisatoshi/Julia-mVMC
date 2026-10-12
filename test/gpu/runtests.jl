@@ -82,6 +82,9 @@ end
 module RankoneObservables
 include("rankone_observables.jl")
 end
+module CompactTransform
+include("compact_transform.jl")
+end
 module LazyPhysBasis
 include("lazy_phys_basis.jl")
 end

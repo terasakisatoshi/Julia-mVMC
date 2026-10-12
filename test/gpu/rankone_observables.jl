@@ -20,7 +20,7 @@ end
 function check_rankone(data,s,cache)
     cfg=Array(s.configurations)
     direct=GPU.CUDAObservables(s,data;measure_greens=false)
-    full=GPU.CUDAObservables(s,data;measure_greens=true)
+    full=GPU.CUDAObservables(s,data;measure_greens=true,compact_transform=false)
     @test isempty(direct.transformed)
     @test !isempty(full.transformed)
     gpu_observables!(s,direct;sampling_cache=cache)
