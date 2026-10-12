@@ -171,6 +171,7 @@ struct CUDAObservables
     termvalues::CuMatrix{Float64}
     batched_inverse::Union{Nothing,BatchedInverse}
     compact::Union{Nothing,CompactTransform}
+    warp_hamiltonian::Bool
 end
 
 # One-body Hamiltonian ratios already have an ordered inverse-row dot path.
@@ -194,6 +195,7 @@ function CUDAObservables(s::CUDAState, data; measure_greens=true, compact_transf
     if !measure_greens
         empty!(one); empty!(two); empty!(ex1); empty!(ex2)
     end
+    warp_hamiltonian = use_batched && !measure_greens && !requires_transformed_slater(ops;measure_greens=false)
     rows = 1 + length(one) + length(two) + length(ex1)
     return CUDAObservables(CUDA.zeros(Float64, rows, size(s.configurations, 2)),
         CuArray(ops), CuArray(coeffs), CuArray(one), CuArray(two), CuArray(ex1), CuArray(ex2),
@@ -207,7 +209,7 @@ function CUDAObservables(s::CUDAState, data; measure_greens=true, compact_transf
         CUDA.zeros(Float64, length(ops)+length(one)+length(two)+length(ex1),
                    s.nelec >= 32 ? size(s.configurations,2) : 0),
         use_batched ? BatchedInverse(s;allocate_transform=!use_compact && transform_batch>0) : nothing,
-        use_compact ? CompactTransform(s,compact_sites) : nothing)
+        use_compact ? CompactTransform(s,compact_sites) : nothing,warp_hamiltonian)
 end
 
 function CPU.gpu_observables!(s::CUDAState, o::CUDAObservables;sampling_cache=nothing)

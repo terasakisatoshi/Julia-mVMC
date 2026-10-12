@@ -112,6 +112,7 @@ function ordered_observable_reduce_kernel!(values, termvalues, coeffs, valid, nq
 end
 
 function parallel_observables!(s, o)
+    o.warp_hamiltonian && return warp_hamiltonian_observables!(s,o)
     batch = size(s.configurations,2)
     count = size(o.termvalues,1)
     if count != 0

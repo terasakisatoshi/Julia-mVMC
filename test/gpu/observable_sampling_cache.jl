@@ -84,7 +84,7 @@ end
         CuArray([GPU.op1(ne-1,ne-1,1)]),empty,empty,empty,
         CUDA.zeros(Float64,batch,n,n,nq),CUDA.zeros(Float64,nq,batch),CUDA.zeros(Bool,nq,batch),
         CUDA.zeros(Float64,n,n,0),CUDA.zeros(Float64,n,n,0),
-        CUDA.zeros(Float64,batch,n,2ns,nq),CUDA.zeros(Float64,1,batch),GPU.BatchedInverse(s),nothing)
+        CUDA.zeros(Float64,batch,n,2ns,nq),CUDA.zeros(Float64,1,batch),GPU.BatchedInverse(s),nothing,false)
     cache=GPU.GPUSamplingCache(s)
     GPU.refresh_sampling_state!(s,cache)
     gpu_observables!(s,o;sampling_cache=cache)
