@@ -1,5 +1,10 @@
 using Documenter
 
+const CUDA_BENCHMARK_REPORT = read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results",
+    "linux-x86_64-rtx3060-2026-10-12.md"), String) * "\n\n---\n\n" *
+    read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results",
+    "linux-x86_64-rtx3060-L128-2026-10-12.md"), String)
+
 const PAGES = [
     "Home" => "index.md",
     "English" => [
@@ -9,6 +14,8 @@ const PAGES = [
         "Input files" => "en/input_files.md",
         "Optimization" => "en/optimization.md",
         "Physics calculation" => "en/physics_calc.md",
+        "CUDA execution" => "en/gpu.md",
+        "CUDA measurements" => "en/gpu_benchmark.md",
         "Output files" => "en/output_files.md",
         "Compatibility" => "en/compatibility.md",
     ],
@@ -19,6 +26,7 @@ const PAGES = [
         "入力ファイル" => "ja/input_files.md",
         "最適化" => "ja/optimization.md",
         "物理量計算" => "ja/physics_calc.md",
+        "CUDA 実行" => "ja/gpu.md",
         "出力ファイル" => "ja/output_files.md",
         "互換性" => "ja/compatibility.md",
     ],

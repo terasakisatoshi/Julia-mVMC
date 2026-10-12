@@ -41,6 +41,11 @@ Expected output ends with a line like `Final energy / site = -0.44...`. Each exa
 
 ## Documentation
 
+An optional experimental CUDA backend runs both optimization and PhysCal with
+resident walkers and CUDA-generated XORWOW proposal words. See the
+[GPU guide](docs/src/en/gpu.md) for supported real/sz-conserved inputs, CPU parity
+checks, two-device benchmarking, and measured performance limits.
+
 [`docs/src/`](docs/src/) — bilingual user manual source (English / Japanese), built with Documenter.jl for GitHub Pages.
 
 [`docs/manual/`](docs/manual/) — legacy Markdown manual pages retained during the Documenter.jl migration.

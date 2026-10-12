@@ -1,0 +1,16 @@
+[deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+MVMCOptimizers = "3516085a-728f-4003-a487-32232985ade4"
+MVMCExpertModeParsers = "f8463493-42a4-4c1a-8bf4-93a3cbd844bc"
+PfaPack = "fb1811a7-9b9e-407c-aa55-948d91a1aed1"
+SFMT = "f01bd734-aebb-490b-aa9b-8490e8eb2402"
+
+[sources]
+MVMCOptimizers = {path = "../../MVMCOptimizers.jl"}
+MVMCExpertModeParsers = {path = "../../MVMCExpertModeParsers.jl"}
+PfaPack = {path = "../../PfaPack.jl"}
+SFMT = {path = "../../SFMT.jl"}
+
+[compat]
+CUDA = "6"
+julia = "1.13"

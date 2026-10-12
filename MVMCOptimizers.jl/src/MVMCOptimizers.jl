@@ -45,6 +45,7 @@ include("workspace.jl")
 
 # Include type definitions
 include("types.jl")
+include("gpu.jl")
 
 # Threading helpers for C OpenMP-equivalent inner loops and local accumulation.
 include("threading.jl")
@@ -86,6 +87,12 @@ export count_total_parameters, pack_parameters, unpack_parameters!,
        set_parameter_value!, get_parameter_value
 export vmc_para_opt!
 export vmc_phys_cal!
+export gpu_pfaffians!, gpu_para_opt!, gpu_phys_cal!
+export gpu_state, gpu_wavefunctions!
+export gpu_sample!
+export gpu_observables!
+export gpu_observables_workspace
+export run_gpu_para_opt_from_namelist, run_gpu_phys_cal_from_namelist
 export run_para_opt_from_namelist
 export run_phys_cal_from_namelist
 export read_initial_def!

@@ -1,0 +1,6 @@
+setup_complete nsite=128 walkers=1024 devices=0,1 CPU_BLAS=LBTConfig([ILP64] libopenblas64_.so) Julia=1.13.1
+GPU_two_devices_wall_min_median_max_s=(0.58045926, 0.583759418, 0.714609928)
+CPU_single_thread_min_median_max_s=(7.450000496, 8.158815728, 9.024936157)
+max_observable_error=1.9297003746032715e-6 max_derivative_error=6.967457011342049e-8
+mismatched_observables=0 mismatched_derivatives=0
+[ Info: Parsing completed successfully
