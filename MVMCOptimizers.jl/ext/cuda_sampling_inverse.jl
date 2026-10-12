@@ -56,11 +56,7 @@ function refresh_sampling_state!(s,cache::GPUSamplingCache,work::BatchedSampling
         @cuda threads=128 blocks=cld(count,128) fastmath=false pack_initial_pfaffians!(
             work.pfaffians,initial_pfaffians,batch,count)
     end
-    handle=CUDA.cuBLAS.handle()
-    CUDA.cuBLAS.cublasDgetrfBatched(handle,n,work.lu_ptrs,n,work.pivots,work.lu_info,count)
-    CUDA.cuBLAS.cublasDgetriBatched(handle,n,work.lu_ptrs,n,work.pivots,
-        work.inverse_ptrs,n,work.inverse_info,count)
-    @cuda threads=256 blocks=cld(n*n*count,256) fastmath=false skew_inverse_kernel!(work.inverse,n,count)
+    sampling_lu_inverse!(work,n,count)
     @cuda threads=256 blocks=cld(n*n*count,256) fastmath=false publish_batched_inverse!(
         cache.inverse,cache.pfaffians,cache.valid,work.inverse,work.pfaffians,
         work.lu_info,work.inverse_info,n,batch,count)
@@ -92,5 +88,15 @@ function pack_initial_pfaffians!(packed,initial,batch,count)
     b=(m-1)%batch+1
     q=(m-1)÷batch+1
     @inbounds packed[m]=initial[q,b]
+    return nothing
+end
+
+# Shared native fallback; its status arrays retain cuBLAS singularity reports.
+function sampling_lu_inverse!(work::BatchedSamplingInverse,n,count)
+    handle=CUDA.cuBLAS.handle()
+    CUDA.cuBLAS.cublasDgetrfBatched(handle,n,work.lu_ptrs,n,work.pivots,work.lu_info,count)
+    CUDA.cuBLAS.cublasDgetriBatched(handle,n,work.lu_ptrs,n,work.pivots,
+        work.inverse_ptrs,n,work.inverse_info,count)
+    @cuda threads=256 blocks=cld(n*n*count,256) fastmath=false skew_inverse_kernel!(work.inverse,n,count)
     return nothing
 end
