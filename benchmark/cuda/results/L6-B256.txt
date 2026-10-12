@@ -1,0 +1,44 @@
+[ Info: Parsing completed successfully
+CUDA toolchain: 
+- runtime 13.4.0, artifact installation
+- driver 580.178.4 for CUDA 13.3, forward-compatible
+- compiler 13.4.92, artifact installation
+
+CUDA libraries: 
+- cuBLAS: 13.8.0
+- cuSPARSE: 12.8.6
+- cuSOLVER: 12.3.4
+- cuFFT: 12.4.0
+- cuRAND: 10.4.4
+- CUPTI: 2026.3.1 (API 13.4.1)
+- NVML: 13.0.0+580.178.4
+
+Julia packages: 
+- CUDACore: 6.4.2
+- GPUArrays: 11.5.16
+- GPUCompiler: 2.13.4
+- KernelAbstractions: 0.9.45
+- CUDA_Driver_jll: 13.3.5+0
+- CUDA_Compiler_jll: 0.6.3+1
+- CUDA_Runtime_jll: 0.25.0+2
+- NVPTX_LLVM_Backend_jll: 23.1.2+1
+
+Toolchain:
+- Julia: 1.13.1
+- LLVM: 20.1.8
+
+2 devices:
+  0: NVIDIA GeForce RTX 3060 (sm_86, 11.445 GiB / 12.000 GiB available)
+     compiles to sm_86 / PTX 9.4 (LLVM: sm_86 / PTX 9.2)
+  1: NVIDIA GeForce RTX 3060 (sm_86, 11.146 GiB / 12.000 GiB available)
+     compiles to sm_86 / PTX 9.4 (LLVM: sm_86 / PTX 9.2)
+Julia=1.13.1 CPU_BLAS=LBTConfig([ILP64] libopenblas64_.so) device=1 GPU_RNG=cuRAND/XORWOW
+input=/home/terasaki/work/atelierarith/julia-mvmc-gpu/test/gpu/../../examples/inputs/hubbard_chain_real/namelist.def nsite=6 nqp=8 walkers=256 threads=32
+sampling_20_proposals_per_walker gpu_wall_min_median_max_s=(0.002458167, 0.002475987, 0.002503892) gpu_event_min_median_max_s=(0.0023640638682991266, 0.002419712021946907, 0.0024408961180597544)
+energy_and_requested_greens gpu_wall_min_median_max_s=(0.001260929, 0.001291176, 0.001297839) gpu_event_min_median_max_s=(0.001216544071212411, 0.001218560035340488, 0.001246207975782454)
+analytic_log_derivatives_cached gpu_wall_min_median_max_s=(0.000245936, 0.000248638, 0.000314651) gpu_event_min_median_max_s=(0.0002457599912304431, 0.0002466239966452122, 0.00025702398852445185)
+SR_moments gpu_wall_min_median_max_s=(0.000234199, 0.000246027, 0.000399397) gpu_event_min_median_max_s=(0.00023552001221105456, 0.0002447360020596534, 0.000262752000708133)
+CPU_energy_greens_derivatives_single_thread_min_median_max_s=(0.007249538, 0.007403758, 0.048072363)
+measured_configuration_CPU_GPU_max_observable_error=1.1013412404281553e-13 max_derivative_error=2.220446049250313e-15
+GPU_energy_greens_derivatives_min_median_max_s=(0.001539587, 0.001557458, 0.001580131)
+inner_loop_memory_copy_records=0

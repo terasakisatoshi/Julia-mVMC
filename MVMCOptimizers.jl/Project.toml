@@ -20,6 +20,7 @@ PfaPack = {path = "../PfaPack.jl"}
 SFMT = {path = "../SFMT.jl"}
 
 [compat]
+CUDA = "6"
 FastGaussQuadrature = "1.0"
 LoopVectorization = "0.12.173"
 MPI = "0.20"
@@ -29,6 +30,12 @@ julia = "1.11"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 SHA = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[weakdeps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+
+[extensions]
+MVMCCUDAExt = "CUDA"
 
 [targets]
 test = ["Logging", "SHA", "Test"]
