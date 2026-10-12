@@ -1,0 +1,33 @@
+{
+  "baseline_source": "358e59038a64f344ec15ea48557245e8ab32a9e8",
+  "candidate_source": "77eae13a801e53e4582d23c52a5d00da102ca696",
+  "warm_seconds": {
+    "baseline": [
+      10.434381148,
+      10.481069638,
+      10.491488702,
+      10.450724141,
+      10.508288312
+    ],
+    "candidate": [
+      5.131494781,
+      5.125963152,
+      5.136847408,
+      5.131510695,
+      5.141643821
+    ]
+  },
+  "warm_median_seconds": {
+    "baseline": 10.481069638,
+    "candidate": 5.131510695
+  },
+  "first_call_seconds_excluded": {
+    "baseline": 57.122201137,
+    "candidate": 54.382091215
+  },
+  "speedup": 2.0424920186198694,
+  "frozen_reference_seconds": 10.462263521,
+  "frozen_reference_speedup": 2.0388271881015734,
+  "target_seconds": 5.2311317605,
+  "all_candidate_runs_below_target": true
+}

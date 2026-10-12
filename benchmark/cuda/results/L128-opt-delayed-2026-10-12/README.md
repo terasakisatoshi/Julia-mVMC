@@ -88,6 +88,12 @@ See [full production GPU output](full-gpu-suite.log).
 
 ## Reproduction
 
+Use the historical report checkout `97c8113` (production source `7f9d2fd`).
+The frozen host dispatch still calls shared kernels and uses production
+workspace types; running it against later source changes does not reproduce
+this historical comparison. The subsequent twofold report uses independent
+source checkouts and unchanged public entry points instead.
+
 Use the pinned `test/gpu` environment and built native reference libraries:
 
 ```sh

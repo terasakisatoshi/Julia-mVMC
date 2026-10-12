@@ -1,0 +1,7 @@
+Linux x86_64; Julia 1.13.1; CUDA.jl 6; GPU 1; FP64
+Julia threads = BLAS threads = 1; ILP64 OpenBLAS
+No inherited JULIA_MVMC_*, JULIA_NUM_THREADS, OPENBLAS_NUM_THREADS or OMP_NUM_THREADS overrides.
+Worker sets JULIA_NUM_THREADS=1 and BLAS threads=1.
+index, name, uuid, driver_version, memory.total [MiB]
+0, NVIDIA GeForce RTX 3060, GPU-a78d5217-eba3-72c2-3d5b-8ae496ebbc2e, 580.178.04, 12288 MiB
+1, NVIDIA GeForce RTX 3060, GPU-ed896702-ca5c-93f6-2537-06fffdac4a91, 580.178.04, 12288 MiB

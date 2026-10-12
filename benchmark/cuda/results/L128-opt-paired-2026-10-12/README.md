@@ -60,6 +60,10 @@ archived passing focused and full-suite runs.
 
 ## Reproduction
 
+Run this historical comparison at report commit `1f7946a`, which includes
+the measured production source. Its frozen runners still call shared kernels;
+later production changes alter the comparison even when the driver is unchanged.
+
 Use the pinned `test/gpu` environment and built native reference libraries.
 From the repository root:
 
