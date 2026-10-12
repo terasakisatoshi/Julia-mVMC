@@ -76,3 +76,6 @@ end
 module ObservableSamplingCache
 include("observable_sampling_cache.jl")
 end
+module TiledPublication
+include("tiled_publication.jl")
+end
