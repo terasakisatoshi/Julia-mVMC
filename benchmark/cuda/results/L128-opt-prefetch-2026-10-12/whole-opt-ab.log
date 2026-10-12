@@ -1,0 +1,33 @@
+scope=complete public Opt20; FP64 GPU1 RTX3060; Julia_threads=1 BLAS_threads=1 warmup128 interval128 walkers320 seed79; launch/imports and GC outside clocks
+Julia=1.13.1 checkpoint_sha256=36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8 namelist_sha256=8c12fb80972128ac0921a15f957a7bc00b38ac9cc6cf0d3e0e0dd6d9efdbab00
+ab_kernel_source_sha256=c9903c7c2aebcf06aa188f6758867bfc56e84bcde9b034553ee1a2fffccdc68d
+production_source_sha256 cuda_sampling_update.jl fcaa4f617cacc543d85e5ec0579c2115b1d444bad1b875f3bca7ef68ae169938
+production_source_sha256 cuda_runners.jl 7ebab66bb0c7cbe950c521d65c1516ef2c9aae775117bf47236601c850b7ae03
+production_source_sha256 cuda_state.jl 138c08915e0c6914750d36adcbcae71a632a80b165b16734ef536b4a0e0e2261
+rep=0 kind=opt variant=baseline seconds=57.087868911 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=0 kind=opt variant=candidate seconds=13.421424019 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=1 kind=opt variant=baseline seconds=10.489953962 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=1 kind=opt variant=candidate seconds=10.448166173 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=2 kind=opt variant=candidate seconds=10.400375035 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=2 kind=opt variant=baseline seconds=10.511960454 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=3 kind=opt variant=baseline seconds=10.483325836 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=3 kind=opt variant=candidate seconds=10.455701644 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=4 kind=opt variant=candidate seconds=10.482366918 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=4 kind=opt variant=baseline seconds=10.512564731 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=5 kind=opt variant=baseline seconds=10.543412467 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+rep=5 kind=opt variant=candidate seconds=10.450711013 energy_per_site=0.7795418080426397 accepted_last_interval=14742
+Test Summary:                              | Pass  Total     Time
+whole opt prefetch repeated-control parity |   63     63  1m47.9s
+summary kind=opt baseline_seconds=[10.489953962, 10.511960454, 10.483325836, 10.512564731, 10.543412467] candidate_seconds=[10.448166173, 10.400375035, 10.455701644, 10.482366918, 10.450711013] baseline_median=10.511960454 candidate_median=10.450711013 speedup=1.0058607917608486
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully

@@ -1,0 +1,5 @@
+[ Info: Parsing completed successfully
+Test Summary:                                                      | Pass  Total   Time
+Paired factors preserve independently known Pfaffians and inverses |  108    108  16.5s
+Test Summary:                                                    | Pass  Total   Time
+Paired boundary cancellation, singular sectors and startup reuse |  194    194  30.5s

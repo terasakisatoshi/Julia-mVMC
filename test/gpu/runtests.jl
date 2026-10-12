@@ -91,3 +91,6 @@ end
 module InitialParallelQP
 include("initial_parallel_qp.jl")
 end
+module PairedSamplingInverse
+include("paired_sampling_inverse.jl")
+end
