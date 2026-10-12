@@ -206,7 +206,7 @@ function CUDAObservables(s::CUDAState, data; measure_greens=true, compact_transf
                    2s.nelec, 2s.nsite, s.nqp),
         CUDA.zeros(Float64, length(ops)+length(one)+length(two)+length(ex1),
                    s.nelec >= 32 ? size(s.configurations,2) : 0),
-        use_batched ? BatchedInverse(s;allocate_transform=!use_compact) : nothing,
+        use_batched ? BatchedInverse(s;allocate_transform=!use_compact && transform_batch>0) : nothing,
         use_compact ? CompactTransform(s,compact_sites) : nothing)
 end
 

@@ -14,7 +14,8 @@ struct BatchedSamplingInverse
 end
 function BatchedSamplingInverse(s::CUDAState)
     n,count=2s.nelec,size(s.configurations,2)*s.nqp
-    lu=CUDA.zeros(Float64,n,n,count)
+    # Both refresh branches gather every LU entry before native factorization.
+    lu=CuArray{Float64}(undef,n,n,count)
     inverse=similar(lu)
     return BatchedSamplingInverse(lu,similar(lu),inverse,
         CuArray([pointer(lu,(i-1)*n*n+1) for i=1:count]),

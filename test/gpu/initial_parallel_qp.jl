@@ -7,6 +7,8 @@ s=GPU.initial_gpu_state(data,8;seed=79)
 work=GPU.parallel_initial_workspace(s)
 @testset "Parallel QP initializer preserves ordered PF and state" begin
  for mode in (:ordinary,:singular,:masked)
+  # Active gathers overwrite poison; skipped matrices are never published.
+  fill!(work.factors,NaN)
   mode==:singular && (view(s.slater,:,:,1).=0.0)
   pending=CUDA.fill(true,8);candidate=CUDA.fill(true,8)
   if mode==:masked
@@ -32,6 +34,42 @@ work=GPU.parallel_initial_workspace(s)
   @test Array(s.cooperative_factors)≈reference.factors atol=1e-10 rtol=1e-12
   @test Array(work.pfs)≈reference.pf atol=1e-10 rtol=1e-12
   @test Array(CUDA.rand(UInt32,32))==future
+ end
+end
+@testset "Previously skipped QP matrices are initialized on retry" begin
+ fill!(work.factors,NaN)
+ fill!(work.pfs,0.0)
+ pf=CUDA.zeros(Float64,s.nqp,8)
+ for phase in (:masked,:retry)
+  pending_values=Bool[true,true,phase==:retry,true,true,true,true,true]
+  candidate_values=Bool[true,phase==:retry,true,true,true,true,true,true]
+  pending=CuArray(pending_values);candidate=CuArray(candidate_values)
+  CUDA.@cuda threads=128 blocks=8 maxregs=64 fastmath=false GPU.initial_wavefunction_kernel!(
+   GPU.initial_state_view(s),pending,candidate,pf)
+  expected=(pending=Array(pending),cfg=Array(s.configurations),counts=Array(s.counts),
+   occupancy=Array(s.occupancy),pivots=Array(s.pivots),
+   factors=Array(s.cooperative_factors),pf=Array(pf),overlaps=Array(s.overlaps),logs=Array(s.logcorrelations))
+  copyto!(pending,pending_values);copyto!(candidate,candidate_values)
+  GPU.initial_wavefunctions_parallel!(s,pending,candidate,work)
+  @test Array(pending)==expected.pending
+  @test Array(s.configurations)==expected.cfg
+  @test Array(s.counts)==expected.counts
+  @test Array(s.occupancy)==expected.occupancy
+  @test Array(s.pivots)==expected.pivots
+  @test Array(s.cooperative_factors)≈expected.factors atol=1e-10 rtol=1e-12
+  @test Array(work.pfs)≈expected.pf atol=1e-10 rtol=1e-12
+  @test Array(s.overlaps)≈expected.overlaps atol=1e-10 rtol=1e-12
+  @test Array(s.logcorrelations)≈expected.logs atol=1e-12 rtol=1e-12
+  if phase==:masked
+   # Both inactive reasons leave every QP's storage untouched.
+   for b in (2,3)
+    @test all(q->all(isnan,Array(view(work.factors,:,:, (q-1)*8+b))),1:s.nqp)
+    @test all(iszero,Array(view(work.pfs,:,b)))
+   end
+  else
+   # Reuse the same poisoned workspace without clearing it between phases.
+   @test all(isfinite,Array(work.factors))
+  end
  end
 end
 @testset "Private large Phys initializer preserves serial state and RNG" begin

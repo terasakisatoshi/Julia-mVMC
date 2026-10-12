@@ -22,7 +22,8 @@ end
 function BatchedInverse(s::CUDAState; allocate_transform::Bool=true)
     n = 2s.nelec
     count = size(s.configurations,2)*s.nqp
-    lu = CUDA.zeros(Float64,n,n,count)
+    # Cache refresh gathers every LU entry before native factorization.
+    lu = CuArray{Float64}(undef,n,n,count)
     inverse = similar(lu)
     lu_ptrs = CuArray([pointer(lu,(i-1)*n*n+1) for i in 1:count])
     inverse_ptrs = CuArray([pointer(inverse,(i-1)*n*n+1) for i in 1:count])

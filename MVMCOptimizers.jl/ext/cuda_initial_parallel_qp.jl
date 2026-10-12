@@ -45,7 +45,8 @@ function initial_qp_publish_kernel!(s,pending,candidate,factors,pivots,pfs,batch
 end
 function parallel_initial_workspace(s)
     n=2s.nelec;batch=size(s.configurations,2);count=batch*s.nqp
-    return (;factors=CUDA.zeros(Float64,n,n,count),pivots=CUDA.zeros(Int32,n,count),
+    # Active matrices are fully gathered before PF; skipped walkers are not published.
+    return (;factors=CuArray{Float64}(undef,n,n,count),pivots=CUDA.zeros(Int32,n,count),
         pfs=CUDA.zeros(Float64,s.nqp,batch))
 end
 function initial_wavefunctions_parallel!(s,pending,candidate,work)
