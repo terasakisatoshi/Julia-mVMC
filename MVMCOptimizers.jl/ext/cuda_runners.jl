@@ -86,7 +86,8 @@ function runner_sampling_options(cache)
     proposal in ("empty","self-loop") || throw(ArgumentError("GPU proposals must be empty or self-loop"))
     correlation in ("delta","full") || throw(ArgumentError("GPU correlation must be delta or full"))
     return (;empty_destinations=cache !== nothing && proposal == "empty",
-        incremental_correlation=cache !== nothing && correlation == "delta")
+        incremental_correlation=cache !== nothing && correlation == "delta",
+        triangle_update=cache !== nothing && 2cache.owner.nelec>=128)
 end
 
 function runner_observable_cache(cache)

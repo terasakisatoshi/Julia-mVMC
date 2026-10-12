@@ -268,11 +268,11 @@ end
 
 function CPU.gpu_sample!(s::CUDAState; steps::Integer, exchange_fraction::Real=0,
                          tape=nothing, cache=nothing, empty_destinations::Bool=false,
-                         incremental_correlation::Bool=false)
+                         incremental_correlation::Bool=false,triangle_update::Bool=false)
     steps >= 0 || throw(ArgumentError("steps must be nonnegative"))
     0 <= exchange_fraction <= 1 || throw(ArgumentError("exchange_fraction must be in [0, 1]"))
     if cache===nothing
-        empty_destinations || incremental_correlation ?
+        empty_destinations || incremental_correlation || triangle_update ?
             throw(ArgumentError("cached sampler options require a sampling cache")) : nothing
     else
         cache isa GPUSamplingCache && cache.owner===s ||
@@ -283,7 +283,7 @@ function CPU.gpu_sample!(s::CUDAState; steps::Integer, exchange_fraction::Real=0
     draws isa CuArray{UInt32,3} || throw(ArgumentError("tape must be a device UInt32 array"))
     size(draws) == (5, batch, steps) || throw(DimensionMismatch("random tape dimensions"))
     cache !== nothing && return sample_with_cache!(s,cache,draws,exchange_fraction;
-        empty_destinations,incremental_correlation)
+        empty_destinations,incremental_correlation,triangle_update)
     if s.nsite >= 64
         @cuda threads=128 blocks=batch fastmath=false cooperative_sampling_kernel!(
             cooperative_state(s), draws, Float64(exchange_fraction))
