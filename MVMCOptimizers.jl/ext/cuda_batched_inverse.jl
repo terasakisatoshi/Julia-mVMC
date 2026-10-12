@@ -151,8 +151,7 @@ function batched_transform_cache!(s,o,work::BatchedInverse)
         CUDA.cuBLAS.gemm_strided_batched!('N','N',work.alpha,work.inverse,
             work.slater_rows,work.beta,work.transformed)
     end
-    entries = n*2s.nsite*count
-    @cuda threads=256 blocks=cld(entries,256) fastmath=false publish_batched_transform!(
+    @cuda threads=(32,8) blocks=(cld(n*2s.nsite,32),cld(batch,32),s.nqp) fastmath=false tiled_publish_batched_transform!(
         cache_view(o.transformed),work.transformed,work.target_map,n,s.nsite,batch,count)
     return nothing
 end

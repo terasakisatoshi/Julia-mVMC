@@ -27,7 +27,7 @@ function observable_sampling_cache!(s::CUDAState,o::CUDAObservables,cache::GPUSa
     cache.initialized || refresh_sampling_state!(s,cache)
     n,batch=2s.nelec,size(s.configurations,2)
     count=batch*s.nqp
-    @cuda threads=256 blocks=cld(n*n*count,256) fastmath=false publish_sampling_inverse_kernel!(
+    @cuda threads=(32,8) blocks=(cld(n*n,32),cld(batch,32),s.nqp) fastmath=false tiled_publish_sampling_inverse_kernel!(
         cache_view(o.inverse),o.batched_inverse.inverse,o.pfaffians,o.valid,
         cache.inverse,cache.pfaffians,cache.valid,n,batch,count)
     return nothing
