@@ -1,0 +1,159 @@
+scope=DevContainer_phase_profile B320 nsteps20 warmup128 interval128 GPU1 CPU_affinity0,18 FP64; per-phase synchronize adds instrumentation overhead
+checkpoint_sha256=36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8
+source_sha256 cuda_runners.jl 9ed158e38bd6945ea572931ea7262ca235fc23a83805b3c9cb769369353141d9
+source_sha256 cuda_sr.jl d67b26cd86b1ca8cf89eeaba7a2c7cf757106e027f75b990b17987de0ed0e7f0
+source_sha256 cuda_sampling_update.jl 064b3e14a626309fe25556359a582995bf5e45266fd157e1aea822092eeed3b1
+cold_instrumented kind=opt wall=57.10282865 summary=(energy = 99.78135142945789, finite = true)
+instrumented kind=opt rep=1 wall=12.563016766 phase_sum=12.562629125999997 summary=(energy = 99.78135142945789, finite = true)
+phase kind=opt rep=1 name=derivatives seconds=0.7106040570000001
+phase kind=opt rep=1 name=energy_history_update seconds=0.0006689549999999998
+phase kind=opt rep=1 name=final_summary seconds=0.000412672
+phase kind=opt rep=1 name=history_or_accumulator seconds=3.5357e-5
+phase kind=opt rep=1 name=initial_inverse_refresh seconds=0.121235963
+phase kind=opt rep=1 name=initial_walkers seconds=0.156140345
+phase kind=opt rep=1 name=initial_warmup seconds=0.235150636
+phase kind=opt rep=1 name=inverse_refresh seconds=4.422679305
+phase kind=opt rep=1 name=moments seconds=0.05465573
+phase kind=opt rep=1 name=native_sr seconds=0.09530812899999999
+phase kind=opt rep=1 name=observable_workspace seconds=0.006066373
+phase kind=opt rep=1 name=observables seconds=2.046785445
+phase kind=opt rep=1 name=parameter_gauge seconds=0.001178805
+phase kind=opt rep=1 name=parse_parameter_setup seconds=0.083048812
+phase kind=opt rep=1 name=runner_validation seconds=0.000186645
+phase kind=opt rep=1 name=sampling seconds=4.620743485999999
+phase kind=opt rep=1 name=sampling_workspace seconds=0.002286418
+phase kind=opt rep=1 name=slater_refresh seconds=0.0013491279999999998
+phase kind=opt rep=1 name=sr_workspace seconds=0.004092865
+uninstrumented kind=opt rep=1 wall=12.828583697
+instrumented kind=opt rep=2 wall=12.632809327 phase_sum=12.632441488 summary=(energy = 99.78135142945789, finite = true)
+phase kind=opt rep=2 name=derivatives seconds=0.714163593
+phase kind=opt rep=2 name=energy_history_update seconds=0.0008320460000000001
+phase kind=opt rep=2 name=final_summary seconds=0.000437811
+phase kind=opt rep=2 name=history_or_accumulator seconds=3.5892e-5
+phase kind=opt rep=2 name=initial_inverse_refresh seconds=0.12119223
+phase kind=opt rep=2 name=initial_walkers seconds=0.150494119
+phase kind=opt rep=2 name=initial_warmup seconds=0.235442923
+phase kind=opt rep=2 name=inverse_refresh seconds=4.439264607
+phase kind=opt rep=2 name=moments seconds=0.05471153299999999
+phase kind=opt rep=2 name=native_sr seconds=0.09579161900000001
+phase kind=opt rep=2 name=observable_workspace seconds=0.006049152
+phase kind=opt rep=2 name=observables seconds=2.0542301419999998
+phase kind=opt rep=2 name=parameter_gauge seconds=0.0011957760000000002
+phase kind=opt rep=2 name=parse_parameter_setup seconds=0.079224503
+phase kind=opt rep=2 name=runner_validation seconds=0.000169334
+phase kind=opt rep=2 name=sampling seconds=4.671462310999999
+phase kind=opt rep=2 name=sampling_workspace seconds=0.00228636
+phase kind=opt rep=2 name=slater_refresh seconds=0.0013718760000000002
+phase kind=opt rep=2 name=sr_workspace seconds=0.004085661
+uninstrumented kind=opt rep=2 wall=12.580634642
+instrumented kind=opt rep=3 wall=12.586870777 phase_sum=12.586531216000001 summary=(energy = 99.78135142945789, finite = true)
+phase kind=opt rep=3 name=derivatives seconds=0.7139035279999999
+phase kind=opt rep=3 name=energy_history_update seconds=0.0007632509999999998
+phase kind=opt rep=3 name=final_summary seconds=0.000404418
+phase kind=opt rep=3 name=history_or_accumulator seconds=3.8359e-5
+phase kind=opt rep=3 name=initial_inverse_refresh seconds=0.121649313
+phase kind=opt rep=3 name=initial_walkers seconds=0.15101507
+phase kind=opt rep=3 name=initial_warmup seconds=0.238133717
+phase kind=opt rep=3 name=inverse_refresh seconds=4.439187126
+phase kind=opt rep=3 name=moments seconds=0.054582169999999985
+phase kind=opt rep=3 name=native_sr seconds=0.095652339
+phase kind=opt rep=3 name=observable_workspace seconds=0.006056556
+phase kind=opt rep=3 name=observables seconds=2.0539794590000002
+phase kind=opt rep=3 name=parameter_gauge seconds=0.0011652639999999998
+phase kind=opt rep=3 name=parse_parameter_setup seconds=0.07935693
+phase kind=opt rep=3 name=runner_validation seconds=0.000176878
+phase kind=opt rep=3 name=sampling seconds=4.622741781
+phase kind=opt rep=3 name=sampling_workspace seconds=0.002285991
+phase kind=opt rep=3 name=slater_refresh seconds=0.001352153
+phase kind=opt rep=3 name=sr_workspace seconds=0.004086913
+uninstrumented kind=opt rep=3 wall=12.562235416
+median kind=opt instrumented=12.586870777 uninstrumented=12.580634642 overhead=0.006236134999999976
+phase_median kind=opt name=derivatives seconds=0.7139035279999999
+phase_median kind=opt name=energy_history_update seconds=0.0007632509999999998
+phase_median kind=opt name=final_summary seconds=0.000412672
+phase_median kind=opt name=history_or_accumulator seconds=3.5892e-5
+phase_median kind=opt name=initial_inverse_refresh seconds=0.121235963
+phase_median kind=opt name=initial_walkers seconds=0.15101507
+phase_median kind=opt name=initial_warmup seconds=0.235442923
+phase_median kind=opt name=inverse_refresh seconds=4.439187126
+phase_median kind=opt name=moments seconds=0.05465573
+phase_median kind=opt name=native_sr seconds=0.095652339
+phase_median kind=opt name=observable_workspace seconds=0.006056556
+phase_median kind=opt name=observables seconds=2.0539794590000002
+phase_median kind=opt name=parameter_gauge seconds=0.001178805
+phase_median kind=opt name=parse_parameter_setup seconds=0.07935693
+phase_median kind=opt name=runner_validation seconds=0.000176878
+phase_median kind=opt name=sampling seconds=4.622741781
+phase_median kind=opt name=sampling_workspace seconds=0.00228636
+phase_median kind=opt name=slater_refresh seconds=0.001352153
+phase_median kind=opt name=sr_workspace seconds=0.004086913
+cold_instrumented kind=phys wall=1.342622239 summary=(energy = 116.86444093776177, finite = true)
+instrumented kind=phys rep=1 wall=0.939047492 phase_sum=0.939028373 summary=(energy = 116.86444093776177, finite = true)
+phase kind=phys rep=1 name=final_summary seconds=2.1786e-5
+phase kind=phys rep=1 name=history_or_accumulator seconds=0.000188077
+phase kind=phys rep=1 name=initial_inverse_refresh seconds=0.121837209
+phase kind=phys rep=1 name=initial_walkers seconds=0.150707606
+phase kind=phys rep=1 name=initial_warmup seconds=0.237547606
+phase kind=phys rep=1 name=observable_workspace seconds=0.006096388
+phase kind=phys rep=1 name=observables seconds=0.108664841
+phase kind=phys rep=1 name=parse_parameter_setup seconds=0.079729787
+phase kind=phys rep=1 name=phys_accumulate seconds=0.000101675
+phase kind=phys rep=1 name=runner_validation seconds=0.000203466
+phase kind=phys rep=1 name=sampling seconds=0.231644329
+phase kind=phys rep=1 name=sampling_workspace seconds=0.002285603
+uninstrumented kind=phys rep=1 wall=1.115130484
+instrumented kind=phys rep=2 wall=0.938470931 phase_sum=0.938449496 summary=(energy = 116.86444093776177, finite = true)
+phase kind=phys rep=2 name=final_summary seconds=3.2612e-5
+phase kind=phys rep=2 name=history_or_accumulator seconds=3.6492e-5
+phase kind=phys rep=2 name=initial_inverse_refresh seconds=0.1217812
+phase kind=phys rep=2 name=initial_walkers seconds=0.150324215
+phase kind=phys rep=2 name=initial_warmup seconds=0.234942804
+phase kind=phys rep=2 name=observable_workspace seconds=0.006077985
+phase kind=phys rep=2 name=observables seconds=0.108636748
+phase kind=phys rep=2 name=parse_parameter_setup seconds=0.078619405
+phase kind=phys rep=2 name=phys_accumulate seconds=0.000113325
+phase kind=phys rep=2 name=runner_validation seconds=0.000191987
+phase kind=phys rep=2 name=sampling seconds=0.235404842
+phase kind=phys rep=2 name=sampling_workspace seconds=0.002287881
+uninstrumented kind=phys rep=2 wall=0.951689937
+instrumented kind=phys rep=3 wall=0.941097446 phase_sum=0.941073676 summary=(energy = 116.86444093776177, finite = true)
+phase kind=phys rep=3 name=final_summary seconds=3.7735e-5
+phase kind=phys rep=3 name=history_or_accumulator seconds=4.7164e-5
+phase kind=phys rep=3 name=initial_inverse_refresh seconds=0.121949495
+phase kind=phys rep=3 name=initial_walkers seconds=0.154155662
+phase kind=phys rep=3 name=initial_warmup seconds=0.240720165
+phase kind=phys rep=3 name=observable_workspace seconds=0.006122122
+phase kind=phys rep=3 name=observables seconds=0.108676085
+phase kind=phys rep=3 name=parse_parameter_setup seconds=0.080596911
+phase kind=phys rep=3 name=phys_accumulate seconds=0.000112682
+phase kind=phys rep=3 name=runner_validation seconds=0.000289526
+phase kind=phys rep=3 name=sampling seconds=0.2260495
+phase kind=phys rep=3 name=sampling_workspace seconds=0.002316629
+uninstrumented kind=phys rep=3 wall=0.948715255
+median kind=phys instrumented=0.939047492 uninstrumented=0.951689937 overhead=-0.012642445000000002
+phase_median kind=phys name=final_summary seconds=3.2612e-5
+phase_median kind=phys name=history_or_accumulator seconds=4.7164e-5
+phase_median kind=phys name=initial_inverse_refresh seconds=0.121837209
+phase_median kind=phys name=initial_walkers seconds=0.150707606
+phase_median kind=phys name=initial_warmup seconds=0.237547606
+phase_median kind=phys name=observable_workspace seconds=0.006096388
+phase_median kind=phys name=observables seconds=0.108664841
+phase_median kind=phys name=parse_parameter_setup seconds=0.079729787
+phase_median kind=phys name=phys_accumulate seconds=0.000112682
+phase_median kind=phys name=runner_validation seconds=0.000203466
+phase_median kind=phys name=sampling seconds=0.231644329
+phase_median kind=phys name=sampling_workspace seconds=0.002287881
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
