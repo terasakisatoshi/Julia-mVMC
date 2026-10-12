@@ -92,12 +92,17 @@ function initial_gpu_state(data::ExpertModeData,walkers::Integer;seed::Integer=7
     pending = CUDA.fill(true,walkers)
     candidate = CUDA.zeros(Bool,walkers)
     pfaffians = return_pfaffians ? CUDA.zeros(Float64,s.nqp,walkers) : nothing
+    parallel = !needs_derivatives && ns >= 128 && 2ne >= 128 && walkers >= 128 && s.nqp > 1
+    qp_work = parallel ? parallel_initial_workspace(s) : nothing
     remaining = walkers
     for attempt in 1:max_attempts
         tape = CUDA.rand(UInt32,2ne+2ns+16,walkers)
         @cuda threads=128 blocks=cld(walkers,128) fastmath=false initial_configuration_kernel!(
             s.configurations,scratch,s.localspins,tape,pending,candidate,ns,ne,walkers)
-        if ns >= 64
+        if parallel
+            initial_wavefunctions_parallel!(s,pending,candidate,qp_work)
+            pfaffians !== nothing && copyto!(pfaffians,qp_work.pfs)
+        elseif ns >= 64
             @cuda threads=128 blocks=walkers maxregs=64 fastmath=false initial_wavefunction_kernel!(
                 initial_state_view(s),pending,candidate,pfaffians)
         else
