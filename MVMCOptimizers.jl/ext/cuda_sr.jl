@@ -106,13 +106,20 @@ struct CUDASR
 end
 function CUDASR(s::CUDAState, data)
     np = length(s.parameters)
+    basis = if s.basis === nothing
+        s.nsite >= 64 && s.slater_assembly !== nothing ||
+            throw(ArgumentError("derivative basis requires a large-site Slater assembly"))
+        sparse_slater_basis(s.slater_assembly,np)
+    else
+        s.basis
+    end
     flags = [CPU.get_opt_flag_for_parameter(data, 2(p-1)) != 0 for p in 1:np]
-    sparse = s.basis isa CUDA.cuSPARSE.CuSparseMatrixCSC ? s.basis :
-        (s.nsite >= 64 ? CUDA.cuSPARSE.CuSparseMatrixCSC(s.basis) : nothing)
+    sparse = basis isa CUDA.cuSPARSE.CuSparseMatrixCSC ? basis :
+        (s.nsite >= 64 ? CUDA.cuSPARSE.CuSparseMatrixCSC(basis) : nothing)
     decoded = sparse === nothing ? nothing : decoded_sparse_basis(sparse,s.nsite)
     return CUDASR(CUDA.zeros(Float64, np, size(s.configurations,2)),
                   similar(s.factors), CuArray(flags),
-                  CUDA.zeros(Float64, size(s.basis,1), size(s.configurations,2)),
+                  CUDA.zeros(Float64, size(basis,1), size(s.configurations,2)),
                   CuArray([1.0]), CuArray([0.0]),
                   sparse,decoded)
 end

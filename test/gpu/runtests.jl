@@ -82,3 +82,6 @@ end
 module RankoneObservables
 include("rankone_observables.jl")
 end
+module LazyPhysBasis
+include("lazy_phys_basis.jl")
+end
