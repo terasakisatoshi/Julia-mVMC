@@ -6,7 +6,7 @@ struct CUDAState
     nqp::Int
     threads::Int
     parameters::CuVector{Float64}
-    basis::Union{CuMatrix{Float64},CUDA.cuSPARSE.CuSparseMatrixCSC{Float64,Int32}}
+    basis::Union{Nothing,CuMatrix{Float64},CUDA.cuSPARSE.CuSparseMatrixCSC{Float64,Int32}}
     slater::CuArray{Float64,3}
     weights::CuVector{Float64}
     configurations::CuMatrix{Int32} # zero-based sites, up electrons followed by down
@@ -71,6 +71,14 @@ function slater_basis(data, np, ns, ne, nq, nproj)
 end
 
 function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:Integer}, threads::Integer=32, initialize_wavefunctions::Bool=true)
+    return cuda_state_for_runner(data;configurations,threads,initialize_wavefunctions)
+end
+
+# PhysCal needs the Slater assembly, but no parameter-derivative basis. Keep
+# this choice private; public gpu_state retains its complete default workspace.
+function cuda_state_for_runner(data::ExpertModeData; configurations::AbstractMatrix{<:Integer},
+                               threads::Integer=32, initialize_wavefunctions::Bool=true,
+                               needs_derivatives::Bool=true)
     CUDA.functional() || throw(ArgumentError("A functional CUDA device is required"))
     validate_cuda_data(data)
     threads in (32,64,128,256) || throw(ArgumentError("walker block size must be 32, 64, 128 or 256"))
@@ -90,7 +98,7 @@ function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:In
     nq = max(1, data.modpara.nsp_gauss_leg) * max(1, abs(data.modpara.nmp_trans)) * max(1, data.n_qp_opt_trans)
     assembly = SlaterAssembly(data,nproj,ns,nq)
     if ns >= 64
-        basis = sparse_slater_basis(assembly,np)
+        basis = needs_derivatives ? sparse_slater_basis(assembly,np) : nothing
         weights = real.(data.qp_weights.qp_full_weight)
     else
         dense, weights = slater_basis(data,np,ns,ne,nq,nproj)

@@ -78,7 +78,7 @@ function initial_configuration_kernel!(cfg,scratch,localspins,tape,pending,candi
 end
 
 function initial_gpu_state(data::ExpertModeData,walkers::Integer;seed::Integer=79,max_attempts::Integer=100,
-                           return_pfaffians::Bool=false)
+                           return_pfaffians::Bool=false,needs_derivatives::Bool=true)
     walkers > 0 && max_attempts > 0 || throw(ArgumentError("invalid GPU initialization lengths"))
     ns = data.modpara.nsite
     ne = data.modpara.nelec == 0 ? (data.modpara.nlocspin+data.modpara.ncond)÷2 : data.modpara.nelec
@@ -86,7 +86,7 @@ function initial_gpu_state(data::ExpertModeData,walkers::Integer;seed::Integer=7
     nlocal = count(==(1),localspins)
     nlocal <= 2ne <= 2ns-nlocal || throw(ArgumentError("infeasible local-spin filling"))
     placeholder = repeat(Int32.(vcat(collect(0:ne-1),collect(0:ne-1))),1,walkers)
-    s = CPU.gpu_state(data;configurations=placeholder,initialize_wavefunctions=false)
+    s = cuda_state_for_runner(data;configurations=placeholder,initialize_wavefunctions=false,needs_derivatives)
     CUDA.seed!(seed)
     scratch = CUDA.zeros(Int32,2ne+ns,walkers)
     pending = CUDA.fill(true,walkers)

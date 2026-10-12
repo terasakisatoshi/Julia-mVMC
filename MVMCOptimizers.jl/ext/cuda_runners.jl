@@ -95,15 +95,15 @@ function runner_observable_cache(cache)
     return mode == "reuse" ? cache : nothing
 end
 
-function prepared_runner_state(data,walkers,rng,seed)
+function prepared_runner_state(data,walkers,rng,seed;needs_derivatives::Bool=true)
     mode = get(ENV,"JULIA_MVMC_GPU_INITIALIZATION",data.modpara.nsite >= 64 ? "gpu" : "cpu")
     mode in ("gpu","cpu") || throw(ArgumentError("GPU initialization must be gpu or cpu"))
     if mode == "gpu"
-        s,pf=initial_gpu_state(data,walkers;seed,return_pfaffians=true)
+        s,pf=initial_gpu_state(data,walkers;seed,return_pfaffians=true,needs_derivatives)
         return s,false,pf
     end
     cfg = initial_configurations(data,walkers,rng)
-    return CPU.gpu_state(data;configurations=cfg),true,nothing
+    return cuda_state_for_runner(data;configurations=cfg,needs_derivatives),true,nothing
 end
 
 function runner_sampling_lengths(data,walkers,warmup,interval)
@@ -121,7 +121,7 @@ function gpu_phys_cal_runner!(data::ExpertModeData; configurations, nsamples::In
     nsamples > 0 && warmup >= 0 && interval >= 0 || throw(ArgumentError("invalid sampling lengths"))
     # Validate operator tables before RNG use or launch.
     operator_tables(data)
-    s = state === nothing ? CPU.gpu_state(data; configurations) : state
+    s = state === nothing ? cuda_state_for_runner(data; configurations,needs_derivatives=false) : state
     validate_initial_walkers(s, configurations)
     o = CUDAObservables(s, data)
     sampler = runner_sampling_cache(s)
@@ -224,7 +224,7 @@ function CPU.run_gpu_phys_cal_from_namelist(namelist::AbstractString;
     data, rng = prepared_gpu_data(namelist; seed, initial_def, opt_para, physcal=true)
     walkers,warmup,interval=runner_sampling_lengths(data,walkers,warmup,interval)
     nsamples=nsamples === nothing ? data.modpara.n_data_qty_smp : Int(nsamples)
-    s,seed_rng,initial_pfaffians = prepared_runner_state(data,walkers,rng,data.modpara.rnd_seed)
+    s,seed_rng,initial_pfaffians = prepared_runner_state(data,walkers,rng,data.modpara.rnd_seed;needs_derivatives=false)
     result = gpu_phys_cal_runner!(data; configurations=s.configurations, nsamples, warmup, interval,
                                seed=data.modpara.rnd_seed, callback, state=s, seed_rng, initial_pfaffians)
     return merge(result, (; data))
