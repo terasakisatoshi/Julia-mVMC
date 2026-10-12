@@ -88,3 +88,6 @@ end
 module LazyPhysBasis
 include("lazy_phys_basis.jl")
 end
+module InitialParallelQP
+include("initial_parallel_qp.jl")
+end
