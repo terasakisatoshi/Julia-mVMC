@@ -181,4 +181,3 @@ function paired_triangular_skew_product!(output,MT,C,n,count)
     end
     return nothing
 end
-

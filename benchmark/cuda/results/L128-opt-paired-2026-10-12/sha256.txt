@@ -1,0 +1,7 @@
+503bc354b097d77fab3afe7ca457932cce94b6c50458b2e9c3fa6c722b857d7c  benchmark/cuda/results/L128-opt-paired-2026-10-12/README.md
+eaef738215a2971b9885d88971cefb12c1bfeae96fbbbe869de1e74a31f72d17  benchmark/cuda/results/L128-opt-paired-2026-10-12/baseline-ab-runners.jl
+04c77d9cb506019a3aecc1b5c95a0a3d9e8f6bbfedcebb57f43659c0358f2179  benchmark/cuda/results/L128-opt-paired-2026-10-12/focused-tests.log
+eb2a7f03ccd713f3cd08a25dc076978540e634d214622e492d1a7f5813dcdaf4  benchmark/cuda/results/L128-opt-paired-2026-10-12/full-gpu-suite.log
+4d8fdc4c2d83483a0d61c1a87b53c1ec0db9d0eba8a9712788a96b9a25194416  benchmark/cuda/results/L128-opt-paired-2026-10-12/verified-timings.json
+0efe0cb429d52d6ba5664562cba3bf4e374eb5a4c67fcc5e4e6a4043e807bb92  benchmark/cuda/results/L128-opt-paired-2026-10-12/whole-opt-ab-driver.jl
+e88674232e843de0ae61c4b3549832753e5940b30a06c47e614ace8c73cb0cbc  benchmark/cuda/results/L128-opt-paired-2026-10-12/whole-opt-ab.log

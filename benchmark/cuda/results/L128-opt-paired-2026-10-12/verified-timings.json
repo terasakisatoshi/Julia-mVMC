@@ -1,0 +1,30 @@
+{
+  "baseline_commit": "cb12901ee4e5f5138502fb4d3d9bc29eab753d30",
+  "candidate_source_commit": "cb66b07",
+  "warm_seconds": {
+    "baseline": [
+      10.434807946,
+      10.418676966,
+      10.503795477,
+      10.453751579,
+      10.480272496
+    ],
+    "candidate": [
+      8.363484979,
+      8.321920511,
+      8.357048326,
+      8.375064591,
+      8.388453447
+    ]
+  },
+  "median_seconds": {
+    "baseline": 10.453751579,
+    "candidate": 8.363484979
+  },
+  "speedup": 1.2499277042104435,
+  "frozen_original_opt_seconds": 10.462263521,
+  "twofold_target_seconds": 5.2311317605,
+  "gpu_suite_assertions": 8628,
+  "gpu_suite_testsets": 61,
+  "ab_checks": 63
+}
