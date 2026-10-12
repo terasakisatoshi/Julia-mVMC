@@ -79,3 +79,6 @@ end
 module TiledPublication
 include("tiled_publication.jl")
 end
+module RankoneObservables
+include("rankone_observables.jl")
+end
