@@ -1,9 +1,28 @@
 using Documenter
 
-const CUDA_BENCHMARK_REPORT = read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results",
-    "linux-x86_64-rtx3060-2026-10-12.md"), String) * "\n\n---\n\n" *
-    read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results",
-    "linux-x86_64-rtx3060-L128-2026-10-12.md"), String)
+const CUDA_BENCHMARK_FILES = [
+    "linux-x86_64-devcontainer-L128-whole-2026-10-12.md",
+    "linux-x86_64-rtx3060-L128-whole-2026-10-12.md",
+    "linux-x86_64-rtx3060-L128-2026-10-12.md",
+    "linux-x86_64-rtx3060-2026-10-12.md",
+]
+
+# Reports keep repository-relative links on GitHub. Resolve them against their
+# source location when embedding the reports in the deployed documentation.
+function cuda_benchmark_report(file)
+    source = read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results", file), String)
+    return replace(source, r"\]\(([^\s)]+)\)" => matched -> begin
+        target = matched[3:end-1]
+        if startswith(target, "#") || occursin(r"^[A-Za-z][A-Za-z0-9+.-]*:", target)
+            return matched
+        end
+        path = normpath(joinpath("benchmark", "cuda", "results", target))
+        kind = endswith(target, "/") ? "tree" : "blob"
+        return "](https://github.com/tmisawa/Julia-mVMC/$kind/main/$path)"
+    end)
+end
+
+const CUDA_BENCHMARK_REPORT = join(cuda_benchmark_report.(CUDA_BENCHMARK_FILES), "\n\n---\n\n")
 
 const PAGES = [
     "Home" => "index.md",

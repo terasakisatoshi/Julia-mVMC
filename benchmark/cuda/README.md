@@ -36,3 +36,24 @@ Large inverse matrices use resident cuBLAS batched LU/inversion by default.
 `JULIA_MVMC_GPU_INVERSE=cooperative` selects the Gauss-Jordan debug comparison
 path; its inverse scratch is allocated only when selected. Neither mode changes
 CPU-only behavior or the shared-tape sampling contract.
+
+For complete single-device optimization and PhysCal lifecycles, including setup,
+warmup, sampling, SR and final summaries:
+
+```sh
+JULIA_NUM_THREADS=1 JULIA_MVMC_GPU_DEVICE=1 \
+JULIA_MVMC_E2E_STEPS=20 JULIA_MVMC_E2E_SAMPLES=300 JULIA_MVMC_E2E_REPS=3 \
+julia +1.13.1 --project=test/gpu test/gpu/benchmark_end_to_end.jl \
+  benchmark/cuda/inputs/hubbard_chain_L128/namelist.def
+```
+
+First-use compilation and warmed whole-run timings are reported separately.
+`JULIA_MVMC_E2E_BACKEND=cpu|gpu|both` selects the runs. The benchmark clones inputs
+and retains generated files in its printed temporary directory. It reports
+actual proposal budgets, checkpoint/input/source hashes and the independent-chain
+and output differences; an elapsed ratio does not establish equal trajectories
+or effective sample sizes. The current target applies to **one GPU** for each
+complete workflow; historical fixed-configuration/two-device ratios do not meet
+that target.
+
+The [Dev Container whole-run comparison](results/linux-x86_64-devcontainer-L128-whole-2026-10-12.md) compares a genuine CPU 1-rank baseline, MPI 4/8/16 ranks and one GPU with 320 retained samples globally. [MPI reproduction](../../test/gpu/README_MPI.md) records system-MPI selection, physical-core binding and build-only parallelism.

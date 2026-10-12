@@ -7,7 +7,7 @@ const GPU=Base.get_extension(CPU,:MVMCCUDAExt)
 include("cpu_oracle.jl")
 # A fixed L128 configuration from the seed-79 production benchmark. It has a
 # strongly cancelling projected overlap; it is an input, not a generated oracle.
-const CANCELLATION_CFG=Int32[70, 49, 79, 82, 84, 38, 22, 99, 28, 105, 116, 121, 76, 45, 4, 3, 65, 46, 112, 34, 68, 119, 58, 40, 10, 72, 53, 101, 25, 44, 108, 36, 96, 6, 37, 74, 0, 92, 39, 33, 95, 123, 104, 67, 12, 15, 50, 69, 14, 117, 118, 7, 57, 23, 29, 78, 30, 85, 126, 71, 106, 127, 120, 48, 35, 104, 94, 5, 84, 9, 106, 1, 80, 100, 44, 115, 92, 49, 82, 111, 58, 47, 79, 3, 26, 10, 11, 109, 23, 56, 123, 20, 59, 22, 93, 75, 52, 45, 114, 124, 72, 67, 34, 69, 42, 96, 8, 127, 112, 99, 36, 107, 12, 21, 83, 46, 74, 31, 88, 40, 108, 105, 13, 97, 116, 19, 71, 51]
+include("cancellation_configuration.jl")
 
 function projected_rounding_kernel!(overlaps,state)
     b=blockIdx().x

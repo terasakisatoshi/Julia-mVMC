@@ -3,10 +3,10 @@
 CUDA.jl 6 enables an experimental, device-resident backend for both parameter
 optimization and physical quantities. The existing CPU/SFMT runners are unchanged
 and do not install or load CUDA. This backend targets batching many walkers; it
-recomputes sampling Pfaffians on the GPU and reuses resident inverses for Green
-functions and analytic derivatives. It assigns one CUDA lane to each walker, with
-walker-first workspaces for coalesced memory access. See the
-benchmark report for measured performance and the limits of this first kernel.
+updates sampling Pfaffians and inverses on the GPU and reuses them for Green
+functions and analytic derivatives. Large lattices distribute projection sectors
+across CUDA lanes, with walker-first workspaces for coalesced memory access.
+See the benchmark report for complete-run timings and their sampling scope.
 
 ## Install and run
 
@@ -34,7 +34,11 @@ for fixed optimized parameters. An omitted seed follows the input's `RndSeed` an
 the CPU serial seed-resolution rule. `device` selects a zero-based CUDA device.
 
 `walkers` is the number of resident independent chains. `warmup` and `interval`
-are attempted proposals **per walker**, not CPU NVMCWarmUp/NVMCInterval sweeps.
+are attempted proposals **per walker** when explicitly provided. When omitted,
+the namelist runners use `walkers=NVMCSample`,
+`interval=NVMCInterval*Nsite`, and
+`warmup=NVMCWarmUp*NVMCInterval*Nsite`; PhysCal defaults its iteration count to
+`NDataQtySmp`. Each independent chain receives its own thermalization.
 Each optimization step uses the current batch of walkers. Each PhysCal sampling
 iteration averages that batch, and the final result averages these iterations.
 Autocorrelation and equilibration still require choosing suitable lengths.
@@ -66,9 +70,13 @@ they do not imply support for complex end-to-end GPU runs.
 
 ## Residency and arithmetic
 
-Setup parses inputs, initializes parameters and initial configurations on CPU,
-constructs a linear Slater-element basis once using the established CPU algorithm,
-and uploads the basis and model tables. Afterwards configurations, projection
+Setup parses inputs and initializes parameters on CPU. Large lattices generate
+and validate initial configurations on GPU, using unbiased UInt32 bounded draws
+and the C startup requirement that every projection sector be nonsingular.
+Only a pending-walker count is read at initialization retries. The large-lattice
+Slater derivative basis is constructed directly as CSC from the C four-block
+coefficients; the L128 basis occupies about 12.44 MB instead of 3.24 GB. Small
+lattices retain the CPU configuration and dense basis reference paths. Afterwards, configurations, projection
 counts, Slater elements, Pfaffian scratch, observables, log derivatives, and SR
 matrices stay on the device. Parameter changes rebuild Slater elements with a
 resident kernel using C's four spin-block expressions and explicit round-to-nearest
@@ -78,9 +86,11 @@ cuBLAS GEMM; large lattices use resident CSC coefficients and fuse cofactor
 evaluation with contraction. SR moments use cuBLAS, and direct
 SR uses cuSOLVER Cholesky.
 
-Each optimization boundary reads one maximum-variance scalar, solver status and
-an energy summary. C-compatible gauge shifts copy O(NPara) parameters to CPU and
-back. PhysCal transfers its summary once at the end. No configuration, sampled O
+Variance cutoffs, ordered parameter gauge shifts, solver status and energy
+history stay on GPU throughout optimization. Native cuSOLVER status is checked
+once before final reporting; failed solves do not update parameters. The final
+parameter and energy summaries are transferred on return. PhysCal transfers its
+summary once at the end. No configuration, sampled O
 matrix, Green matrix or SR matrix is copied to the host in the numerical loops.
 No CPU scalar indexing of CuArrays is allowed in the verification suite.
 
@@ -100,11 +110,16 @@ move type, acceptance). Rejected and invalid proposals consume that fixed packet
 UInt32 acceptance words map to `[0,1)` by division by 2^32. This tape is never
 copied to the host during production sampling.
 
-The CUDA proposal is symmetric: select an electron and an arbitrary destination,
-reject occupied/forbidden destinations, or select opposite-spin electrons for an
-exchange and reject invalid exchanges. `NExUpdatePath=0/1/2` selects hopping,
-a 50/50 mixture, or exchange. It differs from C's draw-until-empty proposal and
-from SFMT stream initialization. Equal seeds **do not imply equal CPU/CUDA or
+Large-lattice runners select an electron and rank a destination among allowed
+empty sites, or select opposite-spin electrons for an exchange and reject invalid
+exchanges. Exact integer projection-count deltas avoid full recounting per hop.
+A resident Pfaffian/inverse cache applies C-order hopping updates; batched native
+LU refreshes it at parameter boundaries. Observables reuse those inverse and
+Pfaffian values, retaining the exact minor fallback for singular sectors. `NExUpdatePath=0/1/2` selects hopping,
+a 50/50 mixture, or exchange. The fixed-word GPU stream differs from C's draw-until-empty SFMT stream.
+The uniform-empty hopping distribution agrees for the L128 half-filled Hubbard
+workload; independent chains and thermalization budgets differ from the CPU
+sequential sampling lifecycle. Equal seeds **do not imply equal CPU/CUDA or
 Julia/Rust trajectories**. Match generator state initialization, stream/output
 ordering and conversion before claiming cross-language RNG equality.
 
@@ -122,10 +137,10 @@ factorization may report a nonzero `info` for such columns. These synthetic
 mathematical cases are distinguished from the CPU-reference parity fixtures.
 
 The L128 regression includes a configuration with a projected-sum cancellation
-condition number above2.5million. Explicitly rounded real Pfaffian updates and
-ordered weight accumulation retain the existing1e-9 comparison threshold.
+condition number above 2.5 million. Explicitly rounded real Pfaffian updates and
+ordered weight accumulation retain the existing 1e-9 comparison threshold.
 Raw tiny orbital parameters remain linear in the GPU/C expressions; the historical
-Julia orbital-value builder's1e-14 filtering is tested separately using C closed
+Julia orbital-value builder's 1e-14 filtering is tested separately using C closed
 forms and is not presented as a CPU-reference match for that exceptional case.
 
 ```sh
@@ -161,10 +176,27 @@ large-lattice measurements. Large matrices use a cooperative Pfaffian, resident
 cuBLAS batched LU/inversion, transformed unoccupied Slater columns and independent
 operator evaluation. Occupied columns use the exact identity `A^-1*S_occ = -I`.
 Sparse analytic derivatives contract cofactors directly from device inverse
-tables; singular QPs retain exact minor calculations. Setup still builds/uploads
-the dense Slater basis once, so large-lattice memory requirements remain material.
+tables; singular QPs retain exact minor calculations. Large lattices build and
+upload the sparse Slater derivative basis during setup.
 `JULIA_MVMC_GPU_INVERSE=cooperative` selects the Gauss-Jordan debug comparison.
 The warmed profile covers sampling, observables and analytic derivatives and
 checks the transfer-free inner region. Benchmark results record Julia, CUDA,
-GPU/RNG and actual CPU BLAS configuration. CPU timing evaluates identical fixed
-configurations and quantities, rather than comparing different MC trajectories.
+GPU/RNG and actual CPU BLAS configuration. The historical kernel benchmark evaluates identical fixed configurations. The
+complete-run benchmark additionally measures initialization, sampling, SR and
+final results, using equal saved sample totals but different CPU/GPU chains and
+thermalization budgets.
+
+Large-lattice debug paths can be selected independently with
+`JULIA_MVMC_GPU_INITIALIZATION=cpu`, `JULIA_MVMC_GPU_SAMPLING=refactor`,
+`JULIA_MVMC_GPU_PROPOSALS=self-loop`, `JULIA_MVMC_GPU_CORRELATION=full`, and
+`JULIA_MVMC_GPU_OBSERVABLES=refactor`. Defaults are `gpu`, `update`, `empty`,
+`delta`, and `reuse` for the large runner. Shared tape tests keep the low-level
+legacy proposal mode as their independent reference.
+
+The whole-run Dev Container comparison uses L128, 320 retained samples globally,
+20 optimization steps, one PhysCal run and three warmed repetitions. One GPU
+took 12.55 s / 0.934 s versus a one-rank CPU baseline of 77.14 s / 4.465 s.
+MPI with 16 independent sampling groups was fastest at 11.17 s / 0.763 s;
+MPI with four or eight groups was slower than the GPU. The 20× target remains
+unmet. See the [complete measurements](gpu_benchmark.md) for short-warmup,
+chain, output and proposal-budget differences and the recorded source hashes.

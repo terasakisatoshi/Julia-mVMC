@@ -1,0 +1,40 @@
+launch_ranks=2 launcher=/opt/mpich/bin/mpiexec project=/home/vscode/.cache/mvmc/julia-workspace/test/gpu
+rank_binding=core
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+scope=whole_public_runner; MPI_MAX_wall; cold_compilation_separate; samples_global=8 samples_per_group=8 groups=1 NSplitSize=2 world=2 mode=qp steps=2 warmup=1 interval=1
+Julia=1.13.1 BLAS=LBTConfig([ILP64] libopenblas64_.so) MPI=("MPICH", v"4.2.0") threads=1
+input=/home/vscode/.cache/mvmc/benchmark-results/mpi-smoke-L6/input/namelist.def checkpoint=/home/vscode/.cache/mvmc/benchmark-results/mpi-smoke-L6/fixed/zqp_opt.dat checkpoint_sha256=2a9a2fa0a58a93c48e9c80990b68657f281370f8472a5c4c3dd5daee22b50790
+optimization_sampling_proposal_attempts_all_groups=108
+group_seeds=base+group1 base=79; QPsplit shares one SFMT trajectory; groups mode uses independent C group seeds
+rank_cpu_affinities=[(0, "Cpus_allowed_list:\t0,18"), (1, "Cpus_allowed_list:\t1,19")]
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=19 (NProj=7 + NRBM=0 + NOrbitalIdx=12 + NOptTrans=0)
+Progress of Optimization: 0 %
+Progress of Optimization: 50 %
+Start: Output opt params.
+End: Output opt params.
+phase=cold rep=1 kind=opt MPI_MAX_seconds=25.659463444 energy_per_site=-0.6358105406206195
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=cold rep=1 kind=phys MPI_MAX_seconds=1.906971164 energy_per_site=-0.6717085094887612
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Progress of Optimization: 0 %
+[ Info: NPara=19 (NProj=7 + NRBM=0 + NOrbitalIdx=12 + NOptTrans=0)
+Progress of Optimization: 50 %
+Start: Output opt params.
+End: Output opt params.
+phase=warm rep=1 kind=opt MPI_MAX_seconds=0.005312378 energy_per_site=-0.6358105406206195
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=warm rep=1 kind=phys MPI_MAX_seconds=0.003069828 energy_per_site=-0.6717085094887612
+MPI_opt_warm_min_median_max_s=(0.005312378, 0.005312378, 0.005312378)
+MPI_phys_warm_min_median_max_s=(0.003069828, 0.003069828, 0.003069828)
+artifacts=/home/vscode/.cache/mvmc/benchmark-results/mpi-smoke-L6

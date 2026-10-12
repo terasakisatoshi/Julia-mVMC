@@ -1,0 +1,21 @@
+[{"Driver":"","Count":-1,"DeviceIDs":null,"Capabilities":[["gpu"]],"Options":{}}] [{"Type":"bind","Source":"/home/terasaki/work/atelierarith/mvmc-rs","Target":"/workspaces/mvmc-rs","ReadOnly":true},{"Type":"volume","Source":"mvmc-cargo-1sfb79cckrsg96djc0mmplgg7itrvqo1hnckps4d2slo0q6vroku","Target":"/home/vscode/.cargo"},{"Type":"volume","Source":"mvmc-linux-cache-1sfb79cckrsg96djc0mmplgg7itrvqo1hnckps4d2slo0q6vroku","Target":"/home/vscode/.cache/mvmc"},{"Type":"bind","Source":"/home/terasaki/work/atelierarith/mvmc-rs/.devcontainer/cargo-config.toml","Target":"/home/vscode/.cargo/config.toml","ReadOnly":true},{"Type":"bind","Source":"/home/terasaki/work/atelierarith/julia-mvmc-gpu","Target":"/opt/julia-source","ReadOnly":true},{"Type":"bind","Source":"/tmp/julia-L128-devcontainer-mpi","Target":"/opt/mvmc-mpi-benchmark","ReadOnly":true},{"Type":"bind","Source":"/home/terasaki/.julia/packages","Target":"/opt/host-julia-depot/packages","ReadOnly":true},{"Type":"bind","Source":"/home/terasaki/.julia/artifacts","Target":"/opt/host-julia-depot/artifacts","ReadOnly":true},{"Type":"bind","Source":"/home/terasaki/work/atelierarith/mvmc-rs-build-parallel","Target":"/opt/rust-build-review"}]
+884a724b12bb9bebfbfcf5d26919d7e22bff722b61f6ba417b651ac93d6f03de  /tmp/mvmc-L128-devcontainer.json
+e3e278b12003789cd850a3ec8cece94c27f1ce9962d30b6d24ae989caedbc90b  /tmp/mvmc-L128-Dockerfile-fullcpu
+870e88ca298e757517f62a1627bfc2ee3d8af5ce8d74beee2876f013617cb9ac  /tmp/julia-L128-devcontainer-mpi/benchmark_mpi_end_to_end.jl
+bc4a85f2bdcf8e08f653b29c38dc10c330f33ce5574543ffaf1cf85fc28256ed  /tmp/julia-L128-devcontainer-mpi/build_pfapack_parallel.jl
+2177da177243fefa33fc624151e157c29b94a330f28215895334b9bc30b6212a  /tmp/julia-L128-devcontainer-mpi/launch_mpi.jl
+MPICH Version:      4.2.0
+MPICH Release date: Fri Feb  9 12:29:21 CST 2024
+MPICH ABI:          16:0:4
+MPICH Device:       ch4:ucx
+MPICH configure:    --prefix=/opt/mpich --with-device=ch4:ucx --with-ucx=/usr --with-pm=hydra --with-pmi=pmi1 --without-pmix
+MPICH CC:           gcc    -O2
+MPICH CXX:          g++   -O2
+MPICH F77:          gfortran   -O2
+MPICH FC:           gfortran   -O2
+MPICH features:     threadcomm
+
+Post-timing helper hardening (canonical SHA check and bounded scheduling; commands unchanged):
+870e88ca298e757517f62a1627bfc2ee3d8af5ce8d74beee2876f013617cb9ac benchmark_mpi_end_to_end.jl
+2177da177243fefa33fc624151e157c29b94a330f28215895334b9bc30b6212a launch_mpi.jl
+aeaf617b3bbef278f98824f91f2445533d989107cc4d519e60cd948f0190d31d build_pfapack_parallel.jl

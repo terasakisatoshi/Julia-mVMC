@@ -1,0 +1,6 @@
+MPI_STARTUP rank=0 size=2 required=1 provided=1 rank_sum=1 ok=1
+MPI_STARTUP rank=1 size=2 required=1 provided=1 rank_sum=1 ok=1
+MPI_STARTUP rank=0 size=4 required=1 provided=1 rank_sum=6 ok=1
+MPI_STARTUP rank=1 size=4 required=1 provided=1 rank_sum=6 ok=1
+MPI_STARTUP rank=2 size=4 required=1 provided=1 rank_sum=6 ok=1
+MPI_STARTUP rank=3 size=4 required=1 provided=1 rank_sum=6 ok=1

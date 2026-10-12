@@ -1,0 +1,16 @@
+# Hashes emitted by the first measured whole-run processes.
+# CPU and GPU benchmark-file snapshots differ only in subsequently added
+# reporting/metadata; the CPU runner implementation hashes below match.
+# Live GPU sources may change after this probe. Do not validate these hashes
+# against later performance revisions and claim they were measured here.
+96b34518f1373b69b819187c267db182cc38f8ef6dc479648185f5bd51b4f787  CPU_benchmark_snapshot/test/gpu/benchmark_end_to_end.jl
+7c3ad955163cf6b2d31aa6265d8aafa0cffd11ea8f179be69a8dd07c8a71d65b  GPU_benchmark_snapshot/test/gpu/benchmark_end_to_end.jl
+ccdf89e6481969d5986d6e04293bf4ef6f1a85babb346a6927732e54a4e9ccdf  MVMCOptimizers.jl/src/vmc_sampling.jl
+3903655bdc4ac0dc0bd3dfadc4b5e0e98c64a7504b54cc62ed4663ee447a46d1  MVMCOptimizers.jl/src/vmc_para_opt.jl
+591ed75b32317ec487b1f8d8c8019856b0c6003a33f5b3e29faf079eb7e917f7  MVMCOptimizers.jl/src/vmc_phys_cal.jl
+b738208859d26e493d52be11e534e4f91e72cd57c1d68544d208bea02040073c  MVMCOptimizers.jl/ext/cuda_runners.jl
+8c80f1980e65acf5ea99ecfa2977a8b6908e4555fccc435c9549dd4e3485f7e3  MVMCOptimizers.jl/ext/cuda_state.jl
+2c029f3f43dc488627dab04cdd7f238636a2e0ec5912ab112e9182f6ca5e2678  MVMCOptimizers.jl/ext/cuda_sampling_update.jl
+8c12fb80972128ac0921a15f957a7bc00b38ac9cc6cf0d3e0e0dd6d9efdbab00  cloned_input/namelist.def
+ede08d741d7c49de3d7b8404654f87857f14a7776c4a1ae69c1214ec4eec6902  cloned_input/modpara.def
+36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8  fixed_checkpoint/zqp_opt.dat

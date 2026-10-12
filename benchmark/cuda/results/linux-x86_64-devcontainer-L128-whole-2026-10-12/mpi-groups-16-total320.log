@@ -1,0 +1,264 @@
+launch_ranks=16 launcher=/opt/mpich/bin/mpiexec project=/home/vscode/.cache/mvmc/julia-workspace/test/gpu
+rank_binding=core
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+scope=whole_public_runner; MPI_MAX_wall; cold_compilation_separate; samples_global=320 samples_per_group=20 groups=16 NSplitSize=1 world=16 mode=groups steps=20 warmup=1 interval=1
+Julia=1.13.1 BLAS=LBTConfig([ILP64] libopenblas64_.so) MPI=("MPICH", v"4.2.0") threads=1
+input=/home/vscode/.cache/mvmc/benchmark-results/mpi-groups-16-total320/input/namelist.def checkpoint=/home/vscode/.cache/mvmc/benchmark-results/mpi-groups-16-total320/fixed/zqp_opt.dat checkpoint_sha256=36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8
+optimization_sampling_proposal_attempts_all_groups=860160
+group_seeds=base+group1 base=79; QPsplit shares one SFMT trajectory; groups mode uses independent C group seeds
+rank_cpu_affinities=[(0, "Cpus_allowed_list:\t0,18"), (1, "Cpus_allowed_list:\t1,19"), (2, "Cpus_allowed_list:\t2,20"), (3, "Cpus_allowed_list:\t3,21"), (4, "Cpus_allowed_list:\t4,22"), (5, "Cpus_allowed_list:\t5,23"), (6, "Cpus_allowed_list:\t6,24"), (7, "Cpus_allowed_list:\t7,25"), (8, "Cpus_allowed_list:\t8,26"), (9, "Cpus_allowed_list:\t9,27"), (10, "Cpus_allowed_list:\t10,28"), (11, "Cpus_allowed_list:\t11,29"), (12, "Cpus_allowed_list:\t12,30"), (13, "Cpus_allowed_list:\t13,31"), (14, "Cpus_allowed_list:\t14,32"), (15, "Cpus_allowed_list:\t15,33")]
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=cold rep=1 kind=opt MPI_MAX_seconds=46.23771413 energy_per_site=0.7709243039690338
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=cold rep=1 kind=phys MPI_MAX_seconds=3.200527157 energy_per_site=0.912619465353322
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=warm rep=1 kind=opt MPI_MAX_seconds=11.490397516 energy_per_site=0.7709243039690338
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=warm rep=1 kind=phys MPI_MAX_seconds=0.762519904 energy_per_site=0.912619465353322
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=warm rep=2 kind=opt MPI_MAX_seconds=11.174382908 energy_per_site=0.7709243039690338
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=warm rep=2 kind=phys MPI_MAX_seconds=0.765171021 energy_per_site=0.912619465353322
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=warm rep=3 kind=opt MPI_MAX_seconds=11.171947536 energy_per_site=0.7709243039690338
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=warm rep=3 kind=phys MPI_MAX_seconds=0.758886651 energy_per_site=0.912619465353322
+MPI_opt_warm_min_median_max_s=(11.171947536, 11.174382908, 11.490397516)
+MPI_phys_warm_min_median_max_s=(0.758886651, 0.762519904, 0.765171021)
+artifacts=/home/vscode/.cache/mvmc/benchmark-results/mpi-groups-16-total320
