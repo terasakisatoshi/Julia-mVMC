@@ -124,7 +124,7 @@ function CPU.gpu_para_opt!(data::ExpertModeData; configurations, nsteps::Integer
         CPU.unpack_parameters!(data, ComplexF64.(Array(s.parameters)))
         CPU.sync_modified_parameter!(data)
         copyto!(s.parameters, real.(CPU.pack_parameters(data)))
-        mul!(vec(s.slater), s.basis, s.parameters)
+        refresh_slater!(s)
         CPU.gpu_wavefunctions!(s)
         push!(energies, only(Array(moments.meanE)))
         callback !== nothing && callback(step, s, moments)

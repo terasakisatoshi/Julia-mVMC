@@ -71,8 +71,11 @@ constructs a linear Slater-element basis once using the established CPU algorith
 and uploads the basis and model tables. Afterwards configurations, projection
 counts, Slater elements, Pfaffian scratch, observables, log derivatives, and SR
 matrices stay on the device. Parameter changes rebuild Slater elements with a
-cuBLAS GEMV. Pfaffian cofactor sensitivities contract with the Slater basis using
-cuBLAS GEMM, with resident alpha/beta scalars. SR moments use cuBLAS, and direct
+resident kernel using C's four spin-block expressions and explicit round-to-nearest
+operations. This avoids reassociation from basis GEMV and implicit multiply/add
+contraction. Small lattices contract cofactors with the dense basis through
+cuBLAS GEMM; large lattices use resident CSC coefficients and fuse cofactor
+evaluation with contraction. SR moments use cuBLAS, and direct
 SR uses cuSOLVER Cholesky.
 
 Each optimization boundary reads one maximum-variance scalar, solver status and
@@ -118,6 +121,13 @@ odd elimination columns (only even pivots enter its product); the CPU full-norma
 factorization may report a nonzero `info` for such columns. These synthetic
 mathematical cases are distinguished from the CPU-reference parity fixtures.
 
+The L128 regression includes a configuration with a projected-sum cancellation
+condition number above2.5million. Explicitly rounded real Pfaffian updates and
+ordered weight accumulation retain the existing1e-9 comparison threshold.
+Raw tiny orbital parameters remain linear in the GPU/C expressions; the historical
+Julia orbital-value builder's1e-14 filtering is tested separately using C closed
+forms and is not presented as a CPU-reference match for that exceptional case.
+
 ```sh
 JULIA_MVMC_GPU_DEVICE=0 julia +1.13.1 --project=test/gpu test/gpu/pfaffians.jl
 JULIA_MVMC_GPU_DEVICE=0 julia +1.13.1 --project=test/gpu test/gpu/wavefunctions.jl
@@ -131,8 +141,11 @@ JULIA_MVMC_GPU_DEVICE=0 julia +1.13.1 --project=test/gpu test/gpu/runtests.jl
 Use device 0 for correctness/debugging and device 1 for profiling/benchmarking.
 A separate process selects device 1, warms up compilation and all measured
 library paths, synchronizes and records CUDA-event as well as host-wall timings.
-Avoid concurrent jobs on that same GPU. The scripts do not shard a single run
-across two GPUs or claim multi-GPU speedup.
+Avoid concurrent jobs on that same GPU. Each optimization/PhysCal runner owns
+one device. `test/gpu/benchmark_multi_gpu.jl` additionally splits an identical
+fixed configuration batch across devices0/1 with persistent Julia workers;
+its wall time includes dispatch and synchronization. It does not measure a
+distributed SR solver or a complete two-device Monte Carlo run.
 
 ```sh
 JULIA_MVMC_GPU_DEVICE=1 JULIA_MVMC_GPU_PROFILE=1 \
@@ -143,6 +156,14 @@ JULIA_MVMC_GPU_DEVICE=1 julia +1.13.1 --project=test/gpu \
 ```
 
 See the [Linux RTX3060 measurements](gpu_benchmark.md) for timings and provenance.
+The checked-in L128 Hubbard input and `JULIA_MVMC_GPU_BENCH_STEPS` option support
+large-lattice measurements. Large matrices use a cooperative Pfaffian, resident
+cuBLAS batched LU/inversion, transformed unoccupied Slater columns and independent
+operator evaluation. Occupied columns use the exact identity `A^-1*S_occ = -I`.
+Sparse analytic derivatives contract cofactors directly from device inverse
+tables; singular QPs retain exact minor calculations. Setup still builds/uploads
+the dense Slater basis once, so large-lattice memory requirements remain material.
+`JULIA_MVMC_GPU_INVERSE=cooperative` selects the Gauss-Jordan debug comparison.
 The warmed profile covers sampling, observables and analytic derivatives and
 checks the transfer-free inner region. Benchmark results record Julia, CUDA,
 GPU/RNG and actual CPU BLAS configuration. CPU timing evaluates identical fixed

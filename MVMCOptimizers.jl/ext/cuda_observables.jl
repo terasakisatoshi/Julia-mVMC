@@ -79,7 +79,7 @@ end
 
 @inline function green_value!(op, cfg, counts, occ, overlaps, logs, gutz, jastrow,
                               parameters, slater, weights, factors, pivots, pfs,
-                              cached_inverse, cached_pf, cached_valid,
+                              cached_inverse, cached_pf, cached_valid, cached_transform,
                               ns, ne, ng, nj, nq, batch, b)
     # Apply the right-hand pair first. Keeping electron labels makes Pfaffian
     # antisymmetry carry the fermionic signs, as in CPU green_func1/green_func2.
@@ -96,10 +96,10 @@ end
     if op[1] == op[2] && (op[7] == 1 || op[4] == op[5])
         return 1.0
     end
-    newlog = correlation!(counts, occ, cfg, gutz, jastrow, parameters, ns, ne, ng, nj, b)
+    newlog = logs[b] + operator_correlation_delta(op, occ, gutz, jastrow, parameters, ns, ng, nj, b)
     newip = updated_overlap!(slater, weights, cfg, factors, pivots, pfs,
-                              cached_inverse, cached_pf, cached_valid,
-                              i, k, ns, ne, nq, batch, b)
+                              cached_inverse, cached_pf, cached_valid, cached_transform,
+                              i, k, op, ns, ne, nq, batch, b)
     @inbounds result = exp(newlog - logs[b]) * newip / overlaps[b]
     @inbounds cfg[i,b] = op[2]
     k != 0 && (@inbounds cfg[k,b] = op[5])
@@ -109,15 +109,22 @@ end
 function observable_kernel!(values, ops, coeffs, one, two, ex1, ex2,
                             cfg, counts, occ, overlaps, logs, gutz, jastrow,
                             parameters, slater, weights, factors, pivots, pfs,
-                            cached_inverse, cached_pf, cached_valid,
-                            ns, ne, ng, nj, nq, batch)
+                            cached_inverse, cached_pf, cached_valid, cached_transform,
+                            ns, ne, ng, nj, nq, batch, fallback_only=false)
     b = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     b > batch && return nothing
+    if fallback_only
+        allvalid = true
+        @inbounds for q in 1:nq
+            allvalid &= cached_valid[q,b]
+        end
+        allvalid && return nothing
+    end
     energy = 0.0
     @inbounds for t in eachindex(ops)
         energy += coeffs[t] * green_value!(ops[t], cfg, counts, occ, overlaps, logs,
             gutz, jastrow, parameters, slater, weights, factors, pivots, pfs,
-            cached_inverse, cached_pf, cached_valid, ns, ne, ng, nj, nq, batch, b)
+            cached_inverse, cached_pf, cached_valid, cached_transform, ns, ne, ng, nj, nq, batch, b)
     end
     @inbounds values[1,b] = energy
     row = 1
@@ -125,22 +132,22 @@ function observable_kernel!(values, ops, coeffs, one, two, ex1, ex2,
         row += 1
         values[row,b] = green_value!(one[t], cfg, counts, occ, overlaps, logs,
             gutz, jastrow, parameters, slater, weights, factors, pivots, pfs,
-            cached_inverse, cached_pf, cached_valid, ns, ne, ng, nj, nq, batch, b)
+            cached_inverse, cached_pf, cached_valid, cached_transform, ns, ne, ng, nj, nq, batch, b)
     end
     @inbounds for t in eachindex(two)
         row += 1
         values[row,b] = green_value!(two[t], cfg, counts, occ, overlaps, logs,
             gutz, jastrow, parameters, slater, weights, factors, pivots, pfs,
-            cached_inverse, cached_pf, cached_valid, ns, ne, ng, nj, nq, batch, b)
+            cached_inverse, cached_pf, cached_valid, cached_transform, ns, ne, ng, nj, nq, batch, b)
     end
     @inbounds for t in eachindex(ex1)
         row += 1
         g1 = green_value!(ex1[t], cfg, counts, occ, overlaps, logs,
             gutz, jastrow, parameters, slater, weights, factors, pivots, pfs,
-            cached_inverse, cached_pf, cached_valid, ns, ne, ng, nj, nq, batch, b)
+            cached_inverse, cached_pf, cached_valid, cached_transform, ns, ne, ng, nj, nq, batch, b)
         g2 = green_value!(ex2[t], cfg, counts, occ, overlaps, logs,
             gutz, jastrow, parameters, slater, weights, factors, pivots, pfs,
-            cached_inverse, cached_pf, cached_valid, ns, ne, ng, nj, nq, batch, b)
+            cached_inverse, cached_pf, cached_valid, cached_transform, ns, ne, ng, nj, nq, batch, b)
         values[row,b] = g1 * g2
     end
     correlation!(counts, occ, cfg, gutz, jastrow, parameters, ns, ne, ng, nj, b)
@@ -158,10 +165,20 @@ struct CUDAObservables
     inverse::CuArray{Float64,4}
     pfaffians::CuMatrix{Float64}
     valid::CuMatrix{Bool}
+    packed_factors::CuArray{Float64,3}
+    packed_inverse::CuArray{Float64,3}
+    transformed::CuArray{Float64,4}
+    termvalues::CuMatrix{Float64}
+    batched_inverse::Union{Nothing,BatchedInverse}
 end
 
 function CUDAObservables(s::CUDAState, data; measure_greens=true)
     ops, coeffs, one, two, ex1, ex2 = operator_tables(data)
+    inverse_mode = get(ENV, "JULIA_MVMC_GPU_INVERSE", "batched")
+    inverse_mode in ("batched", "cooperative") ||
+        throw(ArgumentError("JULIA_MVMC_GPU_INVERSE must be batched or cooperative"))
+    use_batched = s.nelec >= 32 && inverse_mode == "batched"
+    packed_batch = s.nelec >= 32 && !use_batched ? size(s.configurations,2) : 0
     if !measure_greens
         empty!(one); empty!(two); empty!(ex1); empty!(ex2)
     end
@@ -170,20 +187,46 @@ function CUDAObservables(s::CUDAState, data; measure_greens=true)
         CuArray(ops), CuArray(coeffs), CuArray(one), CuArray(two), CuArray(ex1), CuArray(ex2),
         CUDA.zeros(Float64, size(s.configurations,2), 2s.nelec, 2s.nelec, s.nqp),
         CUDA.zeros(Float64, s.nqp, size(s.configurations,2)),
-        CUDA.zeros(Bool, s.nqp, size(s.configurations,2)))
+        CUDA.zeros(Bool, s.nqp, size(s.configurations,2)),
+        CUDA.zeros(Float64, 2s.nelec, 2s.nelec, packed_batch),
+        CUDA.zeros(Float64, 2s.nelec, 2s.nelec, packed_batch),
+        CUDA.zeros(Float64, s.nelec >= 32 ? size(s.configurations,2) : 0,
+                   2s.nelec, 2s.nsite, s.nqp),
+        CUDA.zeros(Float64, length(ops)+length(one)+length(two)+length(ex1),
+                   s.nelec >= 32 ? size(s.configurations,2) : 0),
+        use_batched ? BatchedInverse(s) : nothing)
 end
 
 function CPU.gpu_observables!(s::CUDAState, o::CUDAObservables)
     batch = size(s.configurations, 2)
-    @cuda threads=s.threads blocks=cld(batch,s.threads) fastmath=false inverse_cache_kernel!(
-        cache_view(o.inverse), o.pfaffians, o.valid, s.configurations, s.slater, factor_view(s.factors),
-        pivot_view(s.pivots), s.pfaffians, s.nsite, s.nelec, s.nqp, batch)
+    if o.batched_inverse !== nothing
+        batched_inverse_cache!(s,o,o.batched_inverse)
+    elseif s.nelec >= 32
+        @cuda threads=256 blocks=batch shmem=16s.nelec fastmath=false cooperative_inverse_cache_kernel!(
+            cache_view(o.inverse), o.pfaffians, o.valid, s.configurations, s.slater,
+            o.packed_factors, o.packed_inverse, pivot_view(s.pivots), s.nsite, s.nelec, s.nqp, batch)
+    else
+        @cuda threads=s.threads blocks=cld(batch,s.threads) fastmath=false inverse_cache_kernel!(
+            cache_view(o.inverse), o.pfaffians, o.valid, s.configurations, s.slater, factor_view(s.factors),
+            pivot_view(s.pivots), s.pfaffians, s.nsite, s.nelec, s.nqp, batch)
+    end
+    if o.batched_inverse !== nothing
+        batched_transform_cache!(s,o,o.batched_inverse)
+    elseif s.nelec >= 32
+        entries = batch * 2s.nelec * 2s.nsite * s.nqp
+        @cuda threads=256 blocks=cld(entries,256) fastmath=false transformed_slater_kernel!(
+            cache_view(o.transformed), cache_view(o.inverse), o.valid,
+            s.configurations, s.slater, s.nsite, s.nelec, s.nqp, batch)
+    end
+    if s.nelec >= 32
+        parallel_observables!(s,o)
+    end
     @cuda threads=s.threads blocks=cld(batch, s.threads) fastmath=false observable_kernel!(
         o.values, o.ops, o.coeffs, o.one, o.two, o.ex1, o.ex2,
         s.configurations, s.counts, s.occupancy, s.overlaps, s.logcorrelations,
         s.gutz, s.jastrow, s.parameters, s.slater, s.weights, factor_view(s.factors), pivot_view(s.pivots),
-        s.pfaffians, cache_view(o.inverse), o.pfaffians, o.valid,
-        s.nsite, s.nelec, s.ngutz, s.njastrow, s.nqp, batch)
+        s.pfaffians, cache_view(o.inverse), o.pfaffians, o.valid, cache_view(o.transformed),
+        s.nsite, s.nelec, s.ngutz, s.njastrow, s.nqp, batch, s.nelec >= 32)
     return o.values
 end
 
@@ -215,7 +258,7 @@ end
 # CalculateNewPfM2/CalculateNewPfMTwo2_real, using cached A^-1 in mathematical
 # row/column indexing (CPU stores that same logical inverse in a flat C layout).
 @inline function updated_overlap!(slater, weights, cfg, factors, pivots, pfs,
-                                  inv, pf, valid, a, c, ns, ne, nq, batch, b)
+                                  inv, pf, valid, transformed, a, c, op, ns, ne, nq, batch, b)
     ip = 0.0
     n = 2ne
     @inbounds for q in 1:nq
@@ -226,12 +269,32 @@ end
                 factors[i,j,b] = -slater[ri,rj,q]
             end
             pfaffian_kernel!(pfs,factors,pivots,n,batch)
-            ip += weights[q]*pfs[b]
+            ip = CUDA.add_rn(ip,CUDA.mul_rn(weights[q],pfs[b]))
             continue
         end
         ra = cfg[a,b] + (a > ne ? ns : 0) + 1
         ratio = 0.0
-        if c == 0 || c == a
+        if size(transformed,4) != 0
+            olda = (c == a ? op[5] : op[2]) + (a > ne ? ns : 0) + 1
+            if c == 0 || c == a
+                ratio = -transformed_entry(transformed, inv, slater, a, ra, a, c, ra, 0,
+                                           olda, 0, q, b)
+            else
+                rc = cfg[c,b] + (c > ne ? ns : 0) + 1
+                oldc = op[5] + (c > ne ? ns : 0) + 1
+                pa = transformed_entry(transformed, inv, slater, a, ra, a, c, ra, rc, olda, oldc, q, b)
+                pc = transformed_entry(transformed, inv, slater, c, ra, a, c, ra, rc, olda, oldc, q, b)
+                qa = transformed_entry(transformed, inv, slater, a, rc, a, c, ra, rc, olda, oldc, q, b)
+                qc = transformed_entry(transformed, inv, slater, c, rc, a, c, ra, rc, olda, oldc, q, b)
+                cMa = 0.0
+                for i in 1:n
+                    ri = cfg[i,b] + (i > ne ? ns : 0) + 1
+                    tmp = transformed_entry(transformed, inv, slater, i, ra, a, c, ra, rc, olda, oldc, q, b)
+                    cMa += slater[ri,rc,q] * tmp
+                end
+                ratio = inv[a,c,q,b]*slater[ra,rc,q] + inv[a,c,q,b]*cMa + pa*qc - pc*qa
+            end
+        elseif c == 0 || c == a
             for j in 1:n
                 rj = cfg[j,b] + (j > ne ? ns : 0) + 1
                 ratio -= inv[a,j,q,b]*slater[rj,ra,q]
@@ -260,7 +323,142 @@ end
             end
             ratio = inv[a,c,q,b]*slater[ra,rc,q] + inv[a,c,q,b]*cMa + pa*qc - pc*qa
         end
-        ip += weights[q]*ratio*pf[q,b]
+        newpf = CUDA.mul_rn(ratio,pf[q,b])
+        ip = CUDA.add_rn(ip,CUDA.mul_rn(weights[q],newpf))
     end
     return ip
+end
+
+# Large matrices use a block per walker and packed scratch, so neighboring
+# lanes update neighboring matrix entries rather than serializing O(n^3) work.
+function cooperative_inverse_cache_kernel!(cache, pf, valid, cfg, slater, a, inv, pivots,
+                                           ns, ne, nq, batch)
+    b = blockIdx().x
+    lane = threadIdx().x
+    lanes = blockDim().x
+    n = 2ne
+    control = CuStaticSharedArray(Float64, 4)
+    column = CuDynamicSharedArray(Float64, n)
+    @inbounds for q in 1:nq
+        for idx in lane:lanes:n*n
+            i = (idx-1)%n+1
+            j = (idx-1)÷n+1
+            ri = cfg[i,b]+(i > ne ? ns : 0)+1
+            rj = cfg[j,b]+(j > ne ? ns : 0)+1
+            a[i,j,b] = -slater[ri,rj,q]
+        end
+        result = cooperative_pfaffian!(a, pivots, n, b)
+        if lane == 1
+            pf[q,b] = result
+            control[4] = result != 0 ? 1.0 : 0.0
+        end
+        sync_threads()
+        if control[4] != 0
+            for idx in lane:lanes:n*n
+                i = (idx-1)%n+1
+                j = (idx-1)÷n+1
+                ri = cfg[i,b]+(i > ne ? ns : 0)+1
+                rj = cfg[j,b]+(j > ne ? ns : 0)+1
+                a[i,j,b] = -slater[ri,rj,q]
+                inv[i,j,b] = i == j ? 1.0 : 0.0
+            end
+            sync_threads()
+            for k in 1:n
+                if lane == 1
+                    pivot = k
+                    best = abs(a[k,k,b])
+                    for i in k+1:n
+                        x = abs(a[i,k,b])
+                        if x > best
+                            best = x
+                            pivot = i
+                        end
+                    end
+                    control[2] = pivot
+                    control[3] = best
+                    if best == 0
+                        control[4] = 0.0
+                    end
+                end
+                sync_threads()
+                control[4] == 0 && break
+                pivot = Int(control[2])
+                if pivot != k
+                    for j in lane:lanes:n
+                        a[k,j,b],a[pivot,j,b] = a[pivot,j,b],a[k,j,b]
+                        inv[k,j,b],inv[pivot,j,b] = inv[pivot,j,b],inv[k,j,b]
+                    end
+                end
+                sync_threads()
+                if lane == 1
+                    control[3] = 1.0/a[k,k,b]
+                end
+                sync_threads()
+                scale = control[3]
+                for j in lane:lanes:n
+                    a[k,j,b] *= scale
+                    inv[k,j,b] *= scale
+                end
+                sync_threads()
+                for i in lane:lanes:n
+                    column[i] = a[i,k,b]
+                end
+                sync_threads()
+                for idx in lane:lanes:n*n
+                    i = (idx-1)%n+1
+                    j = (idx-1)÷n+1
+                    if i != k
+                        x = column[i]
+                        a[i,j,b] -= x*a[k,j,b]
+                        inv[i,j,b] -= x*inv[k,j,b]
+                    end
+                end
+                sync_threads()
+            end
+        end
+        if lane == 1
+            valid[q,b] = control[4] != 0
+        end
+        if control[4] != 0
+            for idx in lane:lanes:n*n
+                i = (idx-1)%n+1
+                j = (idx-1)÷n+1
+                cache[i,j,q,b] = inv[i,j,b]
+            end
+        end
+        sync_threads()
+    end
+    return nothing
+end
+
+# Resident A^-1 times occupied Slater rows. Each dot keeps the original j order.
+function transformed_slater_kernel!(transformed, inv, valid, cfg, slater, ns, ne, nq, batch)
+    idx = (blockIdx().x-1)*blockDim().x+threadIdx().x
+    n = 2ne
+    idx > batch*n*2ns*nq && return nothing
+    offset = idx-1
+    b = offset%batch+1
+    offset ÷= batch
+    i = offset%n+1
+    offset ÷= n
+    r = offset%(2ns)+1
+    q = offset÷(2ns)+1
+    result = 0.0
+    @inbounds if valid[q,b]
+        for j in 1:n
+            rj = cfg[j,b]+(j > ne ? ns : 0)+1
+            result += inv[i,j,q,b]*slater[rj,r,q]
+        end
+    end
+    @inbounds transformed[i,r,q,b] = result
+    return nothing
+end
+
+@inline function transformed_entry(transformed, inv, slater, i, r, a, c,
+                                   ra, rc, olda, oldc, q, b)
+    @inbounds result = transformed[i,r,q,b] + inv[i,a,q,b]*(slater[ra,r,q]-slater[olda,r,q])
+    if c != 0 && c != a
+        @inbounds result += inv[i,c,q,b]*(slater[rc,r,q]-slater[oldc,r,q])
+    end
+    return result
 end

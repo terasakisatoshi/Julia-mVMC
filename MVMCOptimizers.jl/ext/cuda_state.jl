@@ -23,6 +23,8 @@ struct CUDAState
     logcorrelations::CuVector{Float64}
     localspins::CuVector{Int32}
     accepted::CuVector{Int32}
+    cooperative_factors::CuArray{Float64,3}
+    slater_assembly::Union{Nothing,SlaterAssembly}
 end
 
 # Walker is the leading physical dimension: adjacent lanes access adjacent
@@ -98,10 +100,21 @@ function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:In
         CuArray(jastrow), data.n_gutzwiller_idx, data.n_jastrow_idx,
         CUDA.zeros(Float64, batch, 2ne, 2ne), CUDA.zeros(Int32, batch, 2ne),
         CUDA.zeros(Float64, batch), CUDA.zeros(Float64, batch), CUDA.zeros(Float64, batch),
-        CuArray(Int32.(CPU.get_loc_spn_array(data))), CUDA.zeros(Int32, batch))
-    mul!(vec(s.slater), s.basis, s.parameters)
+        CuArray(Int32.(CPU.get_loc_spn_array(data))), CUDA.zeros(Int32, batch),
+        CUDA.zeros(Float64, 2ne, 2ne, ns >= 64 ? batch : 0),
+        SlaterAssembly(data,nproj,ns,nq))
+    refresh_slater!(s)
     CPU.gpu_wavefunctions!(s)
     return s
+end
+
+function refresh_slater!(s::CUDAState)
+    if s.slater_assembly === nothing
+        mul!(vec(s.slater),s.basis,s.parameters)
+    else
+        assemble_slater!(s,s.slater_assembly)
+    end
+    return s.slater
 end
 
 @inline function correlation!(counts, occ, cfg, gutz, jastrow, parameters,
@@ -147,7 +160,7 @@ end
             factors[i, j, b] = -slater[ri, rj, q]
         end
         pfaffian_kernel!(pfs, factors, pivots, 2ne, batch)
-        result += weights[q] * pfs[b]
+        result = CUDA.add_rn(result,CUDA.mul_rn(weights[q],pfs[b]))
     end
     return result
 end
@@ -165,6 +178,10 @@ end
 
 function CPU.gpu_wavefunctions!(s::CUDAState)
     batch = size(s.configurations, 2)
+    if s.nsite >= 64
+        @cuda threads=128 blocks=batch fastmath=false cooperative_wavefunction_kernel!(cooperative_state(s))
+        return s
+    end
     @cuda threads=s.threads blocks=cld(batch, s.threads) fastmath=false wavefunction_kernel!(
         s.overlaps, s.logcorrelations, s.configurations, s.counts, s.occupancy,
         s.gutz, s.jastrow, s.parameters, s.slater, s.weights, factor_view(s.factors),
@@ -242,6 +259,11 @@ function CPU.gpu_sample!(s::CUDAState; steps::Integer, exchange_fraction::Real=0
     draws = tape === nothing ? CUDA.rand(UInt32, 5, batch, steps) : tape
     draws isa CuArray{UInt32,3} || throw(ArgumentError("tape must be a device UInt32 array"))
     size(draws) == (5, batch, steps) || throw(DimensionMismatch("random tape dimensions"))
+    if s.nsite >= 64
+        @cuda threads=128 blocks=batch fastmath=false cooperative_sampling_kernel!(
+            cooperative_state(s), draws, Float64(exchange_fraction))
+        return s
+    end
     @cuda threads=s.threads blocks=cld(batch, s.threads) fastmath=false sampling_kernel!(
         s.configurations, s.counts, s.occupancy, s.overlaps, s.logcorrelations,
         s.accepted, s.localspins, s.gutz, s.jastrow, s.parameters, s.slater,

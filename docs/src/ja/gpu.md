@@ -44,6 +44,17 @@ JULIA_MVMC_GPU_DEVICE=1 JULIA_MVMC_GPU_PROFILE=1 \
 ```
 
 2台ある場合は GPU 0 をデバッグ、GPU 1 をベンチマークに分けられます。
-各計算自体は1台の GPU で実行します。ウォームアップ後の同期済み計測と
+最適化・PhysCal ランナー自体は1台の GPU で実行します。
+`test/gpu/benchmark_multi_gpu.jl` は同じ固定配置バッチを2台に分割し、
+永続的な Julia worker で並列に観測量・微分を計算します。
+この計測は分散 SR や Monte Carlo 全体の高速化率ではありません。
+ウォームアップ後の同期済み計測と
 CUPTI によるループ内転送の検査を行い、[測定結果](../en/gpu_benchmark.md) に記録します。
 小さなバッチでは起動・計算のコストが効くため、GPU を使えば常に高速になるとは限りません。
+
+L128 の Hubbard 入力を `benchmark/cuda/inputs/hubbard_chain_L128` に追加しました。
+大行列では Pfaffian の協調並列化、GPU 上の batched LU 逆行列、
+Slater 列のキャッシュ、演算子ごとの並列化、疎な解析微分の直接縮約を使います。
+特異な射影行列には既存の minor 計算を残します。
+初期化時には密な Slater 基底を構築・転送するため、GPU メモリの容量にも依存します。
+`JULIA_MVMC_GPU_INVERSE=cooperative` で Gauss-Jordan の比較経路を選択できます。

@@ -9,6 +9,12 @@ const CPU = MVMCOptimizers
 
 @inline pivot_score(x::Float64) = abs(x)
 @inline pivot_score(x::ComplexF64) = abs(real(x)) + abs(imag(x))
+@inline pf_kernel_mul(x::Float64,y::Float64) = CUDA.mul_rn(x,y)
+@inline pf_kernel_mul(x,y) = x*y
+@inline pf_kernel_add(x::Float64,y::Float64) = CUDA.add_rn(x,y)
+@inline pf_kernel_add(x,y) = x+y
+@inline pf_kernel_reciprocal(x::Float64) = CUDA.div_rn(1.0,x)
+@inline pf_kernel_reciprocal(x) = one(x)/x
 
 # Upper/normal DSKTF2 scalar operation order, from ordinary_real_factor.jl.
 # That file's PFAPACK BSD license and provenance also apply to this translation.
@@ -60,28 +66,28 @@ function pfaffian_kernel!(values, A, pivots, n, batch)
             end
             sign = -sign
         end
-        alpha = one(T) / A[kk, k, b]
+        alpha = pf_kernel_reciprocal(A[kk,k,b])
         for j in 1:k-2
             if A[j, k, b] != 0 || A[j, kk, b] != 0
-                temp1 = alpha * A[j, kk, b]
-                temp2 = alpha * A[j, k, b]
+                temp1 = pf_kernel_mul(alpha,A[j,kk,b])
+                temp2 = pf_kernel_mul(alpha,A[j,k,b])
                 for i in 1:j-1
-                    A[i, j, b] = (A[i, j, b] + A[i, k, b] * temp1) -
-                                  A[i, kk, b] * temp2
+                    A[i,j,b] = pf_kernel_add(pf_kernel_add(A[i,j,b],
+                        pf_kernel_mul(A[i,k,b],temp1)),-pf_kernel_mul(A[i,kk,b],temp2))
                 end
             end
             A[j, j, b] = zero(T)
         end
         for j in 1:k-2
-            A[j, k, b] *= alpha
+            A[j,k,b] = pf_kernel_mul(A[j,k,b],alpha)
         end
         pivots[kk, b] = kp
     end
     pf = one(T)
     @inbounds for i in 1:2:n-1
-        pf *= A[i, i+1, b]
+        pf = pf_kernel_mul(pf,A[i,i+1,b])
     end
-    @inbounds values[b] = sign * pf
+    @inbounds values[b] = pf_kernel_mul(sign,pf)
     return nothing
 end
 
@@ -97,9 +103,16 @@ function MVMCOptimizers.gpu_pfaffians!(values::CuVector{T}, A::CuArray{T,3},
     return values
 end
 
+include("cuda_cooperative_pf.jl")
+include("cuda_slater_assembly.jl")
 include("cuda_state.jl")
+include("cuda_cooperative_sampling.jl")
+include("cuda_correlation_delta.jl")
+include("cuda_batched_inverse.jl")
 include("cuda_observables.jl")
+include("cuda_parallel_observables.jl")
 include("cuda_sr.jl")
+include("cuda_sparse_contraction.jl")
 include("cuda_runners.jl")
 
 end
