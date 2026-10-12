@@ -160,7 +160,8 @@ function gpu_para_opt_runner!(data::ExpertModeData; configurations, nsteps::Inte
     solver = CUDASRSolver(length(s.parameters))
     sampler = runner_sampling_cache(s)
     gauge = CUDAParameterGauge(data)
-    sampling_inverse = sampler === nothing ? nothing : BatchedSamplingInverse(s)
+    sampling_inverse = sampler === nothing ? nothing :
+        (2s.nelec >= 128 ? PairedSamplingInverse(s) : BatchedSamplingInverse(s))
     sampling_options = runner_sampling_options(sampler)
     observable_cache = o.batched_inverse === nothing ? nothing : runner_observable_cache(sampler)
     seed_rng && CUDA.seed!(seed)
