@@ -1,0 +1,13 @@
+canonical_build_sha256=ac71bd3d0ca72284aec10db36e201bee2b90015aaa41d35d26ae281dc6a9cfb6
+build_job_budget=36 parallel_independent_native_builds=3
+`gfortran -shared -fPIC -O3 -o /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/libzsktf2.so /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/zskr2.f /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/zsktf2.f -lblas -llapack`
+`gfortran -shared -fPIC -O3 -o /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/libdsktf2.so /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/dskr2.f /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/dsktf2.f -lblas -llapack`
+`g++ -shared -fPIC -std=c++11 -O3 -D_CC_IMPL -DBLAS_EXTERNAL -I/home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps -o /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/libltl2inv.so /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/ltl2inv.cc /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/ilaenv_lauum.cc -lblas -llapack`
+In file included from /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/blalink.hh:17,
+                 from /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/pfaffian.tcc:8,
+                 from /home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/ltl2inv.cc:6:
+/home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/blalink_fort.h: In function ‘char diag2char(diag_t)’:
+/home/terasaki/work/atelierarith/julia-mvmc-double-main/PfaPack.jl/deps/blalink_fort.h:58:1: warning: control reaches end of non-void function [-Wreturn-type]
+   58 | }
+      | ^
+native_builds_completed=3

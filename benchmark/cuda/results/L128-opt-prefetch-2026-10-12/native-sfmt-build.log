@@ -1,0 +1,3 @@
+make: Entering directory '/home/terasaki/work/atelierarith/julia-mvmc-double-main/SFMT.jl/deps/sfmt'
+cc  -fPIC -DMEXP=19937 -shared SFMT.c SFMT-real.c -o libsfmt.so
+make: Leaving directory '/home/terasaki/work/atelierarith/julia-mvmc-double-main/SFMT.jl/deps/sfmt'

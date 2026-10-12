@@ -1,0 +1,13 @@
+fcaa4f617cacc543d85e5ec0579c2115b1d444bad1b875f3bca7ef68ae169938  MVMCOptimizers.jl/ext/cuda_sampling_update.jl
+7ebab66bb0c7cbe950c521d65c1516ef2c9aae775117bf47236601c850b7ae03  MVMCOptimizers.jl/ext/cuda_runners.jl
+138c08915e0c6914750d36adcbcae71a632a80b165b16734ef536b4a0e0e2261  MVMCOptimizers.jl/ext/cuda_state.jl
+c0d361c6fff2fbadceffa47463234f8f4b8595c33585cbee8c75a74076cdaaef  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/README.md
+c9903c7c2aebcf06aa188f6758867bfc56e84bcde9b034553ee1a2fffccdc68d  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/baseline-ab-kernels.jl
+9d04e1f3b548f631167cf8f3bd685bd93d271e7aaf6ed6d4982369405d2a499f  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/fixed-checkpoint.dat.gz
+44b3c33a06d578f1cac717339eecf78e54d7b5333c1871bf4d8388a29cf511f7  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/full-gpu-suite.log
+41dde0457bfe9e533a98c4017796fc56864202429e8d215c25b1907624bd6fbc  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/modpara.def
+2ab6e585a48a05f3652a98380c9931d3895628ec74864e4811197463fefa8e97  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/native-pfapack-build.log
+bdafe61dd4fb1ffbffc2f9bf890b271f5d05cfae9cf0ab536936665b40f3e356  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/native-sfmt-build.log
+4f4d8b99d667f0bbdda477555e4b0fed4061361b04551ef540a7bb808064760c  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/verified-timings.json
+1a764df37af41a1d5d7f4812a5a8e0a67358974e89596a045888366692f6bb44  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/whole-opt-ab-driver.jl
+dc5de3bb88f6ef1054662b866148f7bc772f3b9e140ed377681163997a4bad4b  benchmark/cuda/results/L128-opt-prefetch-2026-10-12/whole-opt-ab.log
