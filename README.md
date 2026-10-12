@@ -17,12 +17,17 @@ Julia port of the [mVMC](https://github.com/issp-center-dev/mVMC) (many-variable
 
 Requires **Julia 1.11+**, `gfortran`, `g++`, `make`, BLAS/LAPACK.
 
+The Rust port's reference environment uses **Julia 1.13.1** and
+`Manifest-v1.13.toml`. Activate the workspace with that Julia version to
+reproduce its locked dependencies.
+
 The supported install path in this release is to clone the repo **with submodules** and activate the workspace project:
 
 ```bash
 git clone --recurse-submodules https://github.com/tmisawa/Julia-mVMC
 cd Julia-mVMC
-julia --project=@. -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
+juliaup add 1.13.1
+julia +1.13.1 --project=@. -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
 ```
 
 If you cloned without `--recurse-submodules`, run `git submodule update --init --recursive` before `Pkg.instantiate()`.
