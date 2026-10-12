@@ -112,15 +112,33 @@ end
     @inbounds for phase in 0:cld(s.nqp,G)-1
         q=phase*G+group+1
         ra=s.configurations[a,b]+(a>s.nelec ? s.nsite : 0)+1
+        # vec2 is unused until the ordered matrix-vector product completes.
+        # For large matrices, stage its common Slater column once per QP;
+        # the following barrier prevents the inverse-vector overwrite racing
+        # any reader. Small matrices retain the original launch/work balance.
+        if N>=128
+            for j in local_lane:128:n
+                if q<=s.nqp
+                    rj=s.configurations[j,b]+(j>s.nelec ? s.nsite : 0)+1
+                    vec2[j]=s.slater[rj,ra,q]
+                end
+            end
+            sync_threads()
+        end
         for i in local_lane:128:n
             if q<=s.nqp
             value=0.0
             for j in 1:n
-                rj=s.configurations[j,b]+(j>s.nelec ? s.nsite : 0)+1
+                column=if N>=128
+                    vec2[j]
+                else
+                    rj=s.configurations[j,b]+(j>s.nelec ? s.nsite : 0)+1
+                    s.slater[rj,ra,q]
+                end
                 # Initialization mirrors a skew pair, and the C update keeps
                 # that invariant. Inv[i,j] equals -Inv[j,i], so adjacent lanes
                 # can read adjacent rows without changing the ordered j sum.
-                value=CUDA.add_rn(value,CUDA.mul_rn(c.inverse[i,j,q,b],s.slater[rj,ra,q]))
+                value=CUDA.add_rn(value,CUDA.mul_rn(c.inverse[i,j,q,b],column))
             end
             vec1[i]=value
             end
