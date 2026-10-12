@@ -1,0 +1,54 @@
+canonical_build_sha256=ac71bd3d0ca72284aec10db36e201bee2b90015aaa41d35d26ae281dc6a9cfb6
+build_job_budget=1 parallel_independent_native_builds=1
+`gfortran -shared -fPIC -O3 -o /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/libzsktf2.so /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/zskr2.f /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/zsktf2.f -lblas -llapack`
+`gfortran -shared -fPIC -O3 -o /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/libdsktf2.so /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/dskr2.f /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/dsktf2.f -lblas -llapack`
+`g++ -shared -fPIC -std=c++11 -O3 -D_CC_IMPL -DBLAS_EXTERNAL -I/home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps -o /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/libltl2inv.so /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/ltl2inv.cc /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/ilaenv_lauum.cc -lblas -llapack`
+In file included from /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/blalink.hh:17,
+                 from /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/pfaffian.tcc:8,
+                 from /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/ltl2inv.cc:6:
+/home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/blalink_fort.h: In function 'char diag2char(diag_t)':
+/home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/blalink_fort.h:58:1: warning: control reaches end of non-void function [-Wreturn-type]
+   58 | }
+      | ^
+native_builds_completed=3
+canonical_build_sha256=ac71bd3d0ca72284aec10db36e201bee2b90015aaa41d35d26ae281dc6a9cfb6
+build_job_budget=36 parallel_independent_native_builds=3
+`gfortran -shared -fPIC -O3 -o /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/libzsktf2.so /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/zskr2.f /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/zsktf2.f -lblas -llapack`
+`gfortran -shared -fPIC -O3 -o /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/libdsktf2.so /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/dskr2.f /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/dsktf2.f -lblas -llapack`
+`g++ -shared -fPIC -std=c++11 -O3 -D_CC_IMPL -DBLAS_EXTERNAL -I/home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps -o /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/libltl2inv.so /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/ltl2inv.cc /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/ilaenv_lauum.cc -lblas -llapack`
+In file included from /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/blalink.hh:17,
+                 from /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/pfaffian.tcc:8,
+                 from /home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/ltl2inv.cc:6:
+/home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/blalink_fort.h: In function 'char diag2char(diag_t)':
+/home/vscode/.cache/mvmc/julia-workspace/PfaPack.jl/deps/blalink_fort.h:58:1: warning: control reaches end of non-void function [-Wreturn-type]
+   58 | }
+      | ^
+native_builds_completed=3
+ERROR: LoadError: MVMC_BUILD_JOBS must be a positive integer
+Stacktrace:
+ [1] error(s::String)
+   @ Base ./error.jl:44
+ [2] top-level scope
+   @ /opt/mvmc-mpi-benchmark/build_pfapack_parallel.jl:12
+ [3] include(mod::Module, _path::String)
+   @ Base ./Base.jl:309
+ [4] exec_options(opts::Base.JLOptions)
+   @ Base ./client.jl:344
+ [5] _start()
+   @ Base ./client.jl:577
+in expression starting at /opt/mvmc-mpi-benchmark/build_pfapack_parallel.jl:12
+invalid_budget_rejected
+ERROR: LoadError: canonical PfaPack build.jl changed (SHA-256 dd5840fe8cb0de65f757bf9ff250149dccf4883629d452fddad0de3eb8b74838); use Pkg.build or update this helper after reviewing the new canonical commands
+Stacktrace:
+ [1] error(s::String)
+   @ Base ./error.jl:44
+ [2] top-level scope
+   @ /opt/mvmc-mpi-benchmark/build_pfapack_parallel.jl:9
+ [3] include(mod::Module, _path::String)
+   @ Base ./Base.jl:309
+ [4] exec_options(opts::Base.JLOptions)
+   @ Base ./client.jl:344
+ [5] _start()
+   @ Base ./client.jl:577
+in expression starting at /opt/mvmc-mpi-benchmark/build_pfapack_parallel.jl:9
+modified_canonical_rejected

@@ -192,3 +192,11 @@ Large-lattice debug paths can be selected independently with
 `JULIA_MVMC_GPU_OBSERVABLES=refactor`. Defaults are `gpu`, `update`, `empty`,
 `delta`, and `reuse` for the large runner. Shared tape tests keep the low-level
 legacy proposal mode as their independent reference.
+
+The whole-run Dev Container comparison uses L128, 320 retained samples globally,
+20 optimization steps, one PhysCal run and three warmed repetitions. One GPU
+took 12.55 s / 0.934 s versus a one-rank CPU baseline of 77.14 s / 4.465 s.
+MPI with 16 independent sampling groups was fastest at 11.17 s / 0.763 s;
+MPI with four or eight groups was slower than the GPU. The 20× target remains
+unmet. See the [complete measurements](gpu_benchmark.md) for short-warmup,
+chain, output and proposal-budget differences and the recorded source hashes.

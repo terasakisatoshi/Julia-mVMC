@@ -55,3 +55,5 @@ and output differences; an elapsed ratio does not establish equal trajectories
 or effective sample sizes. The current target applies to **one GPU** for each
 complete workflow; historical fixed-configuration/two-device ratios do not meet
 that target.
+
+The [Dev Container whole-run comparison](results/linux-x86_64-devcontainer-L128-whole-2026-10-12.md) compares a genuine CPU 1-rank baseline, MPI 4/8/16 ranks and one GPU with 320 retained samples globally. [MPI reproduction](../../test/gpu/README_MPI.md) records system-MPI selection, physical-core binding and build-only parallelism.

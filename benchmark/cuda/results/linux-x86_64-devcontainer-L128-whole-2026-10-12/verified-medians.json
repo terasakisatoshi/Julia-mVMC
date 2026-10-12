@@ -1,0 +1,42 @@
+[
+  {
+    "backend": "CPU",
+    "ranks": 1,
+    "global_samples": 320,
+    "steps": 20,
+    "opt_seconds": 77.137908551,
+    "phys_seconds": 4.465393414
+  },
+  {
+    "backend": "CPU",
+    "ranks": 4,
+    "global_samples": 320,
+    "steps": 20,
+    "opt_seconds": 22.501600746,
+    "phys_seconds": 1.382951334
+  },
+  {
+    "backend": "CPU",
+    "ranks": 8,
+    "global_samples": 320,
+    "steps": 20,
+    "opt_seconds": 14.729498005,
+    "phys_seconds": 0.984994268
+  },
+  {
+    "backend": "CPU",
+    "ranks": 16,
+    "global_samples": 320,
+    "steps": 20,
+    "opt_seconds": 11.174382908,
+    "phys_seconds": 0.762519904
+  },
+  {
+    "backend": "GPU",
+    "devices": 1,
+    "global_samples": 320,
+    "steps": 20,
+    "opt_seconds": 12.548162391,
+    "phys_seconds": 0.93371422
+  }
+]
