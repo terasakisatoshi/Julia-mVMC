@@ -109,3 +109,134 @@ end
         end
     end
 end
+
+@testset "Tiled triangular update preserves packet boundaries" begin
+    ns=64;batch=3
+    rng=MersenneTwister(88101)
+    cfg=repeat(reshape(Int32.(0:ns-1),ns,1),1,batch)
+    base=randn(rng,2ns,2ns,2)
+    for q in 1:2
+        base[:,:,q]-=transpose(base[:,:,q])
+    end
+    for scenario in (:normal,:invalid,:exchange,:threshold,:last_threshold,:zero_qp),
+        empty in (false,true),incremental in (false,true)
+        slater=copy(base)
+        if scenario==:zero_qp
+            # Initially unoccupied up-site32 becomes the proposed first row.
+            # Its first QP Pfaffian is exactlyzero; the second remains finite.
+            slater[33,:,1].=0.0;slater[:,33,1].=0.0
+        end
+        steps=scenario in (:last_threshold,:zero_qp) ? 1 : 20
+        words=rand(rng,UInt32,5,batch,steps)
+        words[1,:,1].=0;words[2,:,1].=0
+        words[3,:,1].=empty ? 0 : 32
+        words[5,:,1].=0
+        fraction=scenario==:exchange ? 1.0 : 0.0
+        fraction==1.0 && (words[3,:,1].=0)
+        tape=CuArray(words)
+        reference=nothing;future=nothing;second_reference=nothing
+        for triangle in (false,true)
+            s=cache_test_state(ns,cfg,slater)
+            gpu_wavefunctions!(s)
+            c=GPU.GPUSamplingCache(s)
+            GPU.refresh_sampling_state!(s,c)
+            if scenario==:invalid
+                flags=Array(c.valid);flags[1,1]=false;copyto!(c.valid,flags)
+            elseif scenario in (:threshold,:last_threshold)
+                fill!(c.accepted_since_refactor,Int32(ns))
+            end
+            CUDA.seed!(9281)
+            GPU.sample_with_cache!(s,c,tape,fraction;empty_destinations=empty,
+                incremental_correlation=incremental,triangle_update=triangle)
+            result=map(Array,(s.configurations,s.counts,s.occupancy,s.accepted,
+                s.overlaps,s.logcorrelations,c.inverse,c.pfaffians,c.valid,
+                c.accepted_since_refactor))
+            nextwords=Array(CUDA.rand(UInt32,64))
+            @test sum(result[4])>0
+            if !triangle
+                reference=result;future=nextwords
+            else
+                for k in (1,2,3,4,9,10)
+                    @test result[k]==reference[k]
+                end
+                for k in (5,6,7,8)
+                    @test all(isapprox.(result[k],reference[k];atol=1e-9,rtol=1e-9))
+                end
+                @test nextwords==future
+                for q in 1:2,b in 1:batch
+                    matrix=result[7][:,:,q,b]
+                    @test maximum(abs.(matrix+transpose(matrix)))<1e-12
+                    if result[9][q,b]
+                        sites=Int.(result[1][:,b]).+1
+                        sites[ns÷2+1:end].+=ns
+                        selected=-slater[sites,sites,q]
+                        @test norm(selected*matrix-I,Inf)<1e-9
+                    end
+                end
+            end
+            # Reusing the same cache must retain the ordered control path
+            # after a preceding singular or threshold rebuild.
+            GPU.sample_with_cache!(s,c,tape,fraction;empty_destinations=empty,
+                incremental_correlation=incremental,triangle_update=triangle)
+            second=map(Array,(s.configurations,s.counts,s.occupancy,s.accepted,
+                s.overlaps,s.logcorrelations,c.inverse,c.pfaffians,c.valid,
+                c.accepted_since_refactor))
+            if !triangle
+                second_reference=second
+            else
+                for k in (1,2,3,4,9,10)
+                    @test second[k]==second_reference[k]
+                end
+                for k in (5,6,7,8)
+                    @test all(isapprox.(second[k],second_reference[k];atol=1e-9,rtol=1e-9))
+                end
+            end
+        end
+    end
+end
+@testset "Triangular grouped fallback and inactive lanes" begin
+    ns=64;batch=3;rng=MersenneTwister(17201)
+    cfg=repeat(reshape(Int32.(0:ns-1),ns,1),1,batch)
+    slater=randn(rng,2ns,2ns,2)
+    for q in 1:2
+        slater[:,:,q]-=transpose(slater[:,:,q])
+    end
+    for fraction in (0.0,0.37,1.0)
+        tape=CuArray(rand(rng,UInt32,5,batch,20))
+        reference=nothing;future=nothing
+        for (triangle,groups) in ((false,1),(true,1),(true,2),(true,4),(true,8))
+            s=cache_test_state(ns,cfg,slater);gpu_wavefunctions!(s)
+            c=GPU.GPUSamplingCache(s);GPU.refresh_sampling_state!(s,c)
+            flags=Array(c.valid);flags[2,1]=false;copyto!(c.valid,flags)
+            counters=Array(c.accepted_since_refactor);counters[2]=ns;copyto!(c.accepted_since_refactor,counters)
+            CUDA.seed!(7101)
+            GPU.sample_with_cache!(s,c,tape,fraction;qp_groups=groups,triangle_update=triangle,
+                empty_destinations=true,incremental_correlation=true)
+            result=map(Array,(s.configurations,s.counts,s.occupancy,s.accepted,
+                s.overlaps,s.logcorrelations,c.inverse,c.pfaffians,c.valid,c.accepted_since_refactor))
+            nextwords=Array(CUDA.rand(UInt32,64))
+            if !triangle
+                reference=result;future=nextwords
+            else
+                for k in (1,2,3,4,9,10)
+                    @test result[k]==reference[k]
+                end
+                for k in (5,6,7,8)
+                    @test all(isapprox.(result[k],reference[k];atol=1e-9,rtol=1e-9))
+                end
+                @test nextwords==future
+            end
+        end
+    end
+end
+
+@testset "Runner selects triangular updates only for large resident caches" begin
+    @test !GPU.runner_sampling_options(nothing).triangle_update
+    for ns in (64,128)
+        cfg=reshape(Int32.(0:ns-1),ns,1)
+        s=cache_test_state(ns,cfg,zeros(Float64,2ns,2ns,2))
+        c=GPU.GPUSamplingCache(s)
+        @test GPU.runner_sampling_options(c).triangle_update==(ns>=128)
+        @test_throws ArgumentError gpu_sample!(s;steps=0,triangle_update=true)
+    end
+end
