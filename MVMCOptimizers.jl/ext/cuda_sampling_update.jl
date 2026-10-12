@@ -11,15 +11,16 @@ mutable struct GPUSamplingCache
     pivots::CuMatrix{Int32}
     accepted_since_refactor::CuVector{Int32}
     initialized::Bool
+    updates::Union{Nothing,DelayedSamplingUpdates}
 end
 
-function GPUSamplingCache(s::CUDAState)
+function GPUSamplingCache(s::CUDAState;delayed::Bool=false)
     n,batch=2s.nelec,size(s.configurations,2)
     return GPUSamplingCache(s,CUDA.zeros(Float64,n,n,s.nqp,batch),
         CUDA.zeros(Float64,s.nqp,batch),CUDA.zeros(Bool,s.nqp,batch),
         CUDA.zeros(Float64,s.nqp,batch),CUDA.zeros(Float64,n,n,batch),
         CUDA.zeros(Float64,n,n,batch),CUDA.zeros(Int32,n,batch),
-        CUDA.zeros(Int32,batch),false)
+        CUDA.zeros(Int32,batch),false,delayed ? DelayedSamplingUpdates(s) : nothing)
 end
 
 function invalidate_sampling_cache!(cache::GPUSamplingCache)
@@ -229,45 +230,6 @@ end
     return -1
 end
 
-@inline function counts_logcorrelation(s,b)
-    value=0.0
-    @inbounds for p in 1:s.ngutz+s.njastrow
-        value+=s.parameters[p]*s.counts[p,b]
-    end
-    return value
-end
-
-# Exact integer version of the ordinary hopping projection-count update.
-# Only pairs touching either moved site change; their input table order is
-# irrelevant to integer counts, and the parameter dot retains the full order.
-@inline function update_hopping_counts!(s,source,destination,spin,b)
-    ns=s.nsite
-    ri,rj=source+1,destination+1
-    opposite=1-spin
-    @inbounds begin
-        p=s.gutz[ri]+1
-        1<=p<=s.ngutz && (s.counts[p,b]-=s.occupancy[ri+opposite*ns,b])
-        p=s.gutz[rj]+1
-        1<=p<=s.ngutz && (s.counts[p,b]+=s.occupancy[rj+opposite*ns,b])
-        xi=s.occupancy[ri,b]+s.occupancy[ri+ns,b]-1
-        xj=s.occupancy[rj,b]+s.occupancy[rj+ns,b]-1
-        for r in 1:ns
-            if r!=ri && r!=rj
-                xr=s.occupancy[r,b]+s.occupancy[r+ns,b]-1
-                p=s.jastrow[min(ri,r),max(ri,r)]+1
-                1<=p<=s.njastrow && (s.counts[s.ngutz+p,b]-=xr)
-                p=s.jastrow[min(rj,r),max(rj,r)]+1
-                1<=p<=s.njastrow && (s.counts[s.ngutz+p,b]+=xr)
-            end
-        end
-        p=s.jastrow[min(ri,rj),max(ri,rj)]+1
-        1<=p<=s.njastrow && (s.counts[s.ngutz+p,b]+=xi-xj-1)
-        s.occupancy[ri+spin*ns,b]=0
-        s.occupancy[rj+spin*ns,b]=1
-    end
-    return nothing
-end
-
 @inline function exchange_occupancy!(s,source,destination,spin,b)
     @inbounds begin
         s.occupancy[source+1+spin*s.nsite,b]=0
@@ -280,7 +242,7 @@ end
 
 function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
                                  incremental_correlation,dimension::Val{N},groups::Val{G}=Val(1),
-                                 triangle::Val{H}=Val(false)) where {N,G,H}
+                                 triangle::Val{H}=Val(false),capacity::Val{K}=Val(0)) where {N,G,H,K}
     b=blockIdx().x
     lane=threadIdx().x
     move=CuStaticSharedArray(Int32,8) # valid,a,c,old site a,old site c,rank,accept,rebuild
@@ -290,6 +252,7 @@ function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
             values[1]=s.overlaps[b]
             values[2]=s.logcorrelations[b]
             s.accepted[b]=0
+            K>0 && (c.delay_count[b]=0)
         end
     end
     sync_threads()
@@ -330,17 +293,22 @@ function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
             end
             move[1]=valid;move[2]=a;move[3]=second;move[4]=ri;move[5]=rj
             move[6]=rank;move[7]=0;move[8]=0
-            if valid
-                if incremental_correlation
-                    if second==0
-                        update_hopping_counts!(s,Int(ri),Int(rj),spin,b)
-                    else
-                        exchange_occupancy!(s,Int(ri),Int(rj),spin,b)
-                    end
-                    values[3]=counts_logcorrelation(s,b)
+        end
+        sync_threads()
+        if move[1]!=0
+            if incremental_correlation && move[3]==0
+                parallel_hopping_counts!(s,Int(move[4]),Int(move[5]),move[2]>s.nelec ? 1 : 0,b)
+            end
+            if incremental_correlation
+                logvalue=parallel_counts_logcorrelation(s,b)
+                lane==1 && (values[3]=logvalue)
+            end
+            if lane==1
+                if incremental_correlation && move[3]!=0
+                    exchange_occupancy!(s,Int(move[4]),Int(move[5]),move[2]>s.nelec ? 1 : 0,b)
                 end
-                s.configurations[a,b]=rj
-                second!=0 && (s.configurations[second,b]=ri)
+                s.configurations[move[2],b]=move[5]
+                move[3]!=0 && (s.configurations[move[3],b]=move[4])
                 if !incremental_correlation
                     values[3]=correlation!(s.counts,s.occupancy,s.configurations,s.gutz,
                         s.jastrow,s.parameters,s.nsite,s.nelec,s.ngutz,s.njastrow,b)
@@ -350,7 +318,8 @@ function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
         sync_threads()
         if move[1]!=0
             if move[6]!=0
-                ip=cached_hopping_overlap!(s,c,Int(move[2]),b,dimension)
+                ip=K>0 ? delayed_hopping_overlap!(s,c,Int(move[2]),b,dimension) :
+                    cached_hopping_overlap!(s,c,Int(move[2]),b,dimension)
                 if lane==1
                     values[4]=ip
                 end
@@ -379,7 +348,7 @@ function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
                     spin=move[2]>s.nelec ? 1 : 0
                     if move[3]==0
                         if incremental_correlation
-                            update_hopping_counts!(s,Int(move[5]),Int(move[4]),spin,b)
+                            nothing # Reverted cooperatively after the acceptance decision.
                         else
                             s.occupancy[move[4]+1+spin*s.nsite,b]=1
                             s.occupancy[move[5]+1+spin*s.nsite,b]=0
@@ -392,19 +361,28 @@ function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
                 end
             end
             sync_threads()
+            if move[7]==0 && move[3]==0 && incremental_correlation
+                parallel_hopping_counts!(s,Int(move[5]),Int(move[4]),move[2]>s.nelec ? 1 : 0,b)
+            end
             if move[7]!=0
                 if move[8]!=0
                     rebuild_sampling_cache!(s,c,b)
                     if lane==1
                         values[1]=sampling_cache_overlap(s,c,b)
+                        K>0 && (c.delay_count[b]=0)
                     end
                 else
-                    update_sampling_inverse!(s,c,Int(move[2]),b,dimension,groups,triangle)
+                    if K>0
+                        delayed_update!(s,c,Int(move[2]),b,dimension,capacity)
+                    else
+                        update_sampling_inverse!(s,c,Int(move[2]),b,dimension,groups,triangle)
+                    end
                 end
             end
         end
         sync_threads()
     end
+    K>0 && delayed_flush!(s,c,b,dimension,capacity)
     if lane==1
         @inbounds begin
             s.overlaps[b]=values[1]
@@ -440,8 +418,15 @@ function sample_with_cache!(s,cache::GPUSamplingCache,draws,exchange_fraction;
     triangle_update && qp_groups==1 && (shared+=33*32*sizeof(Float64))
     state=merge(cooperative_state(s),(;cooperative_factors=cache.factors))
     !cache.initialized && refresh_sampling_state!(s,cache)
+    c=sampling_cache_state(cache)
+    capacity=0
+    if cache.updates !== nothing && qp_groups==1 && triangle_update
+        capacity=SAMPLING_DELAY_CAPACITY
+        shared=delayed_sampling_shared(2s.nelec,capacity)
+        c=merge(c,delayed_sampling_state(cache.updates))
+    end
     @cuda threads=128qp_groups blocks=batch shmem=shared maxregs=kernel_maxregs fastmath=false cached_sampling_kernel!(
-        state,sampling_cache_state(cache),draws,Float64(exchange_fraction),
-        empty_destinations,incremental_correlation,Val(2s.nelec),Val(qp_groups),Val(triangle_update))
+        state,c,draws,Float64(exchange_fraction),empty_destinations,
+        incremental_correlation,Val(2s.nelec),Val(qp_groups),Val(triangle_update),Val(capacity))
     return s
 end
