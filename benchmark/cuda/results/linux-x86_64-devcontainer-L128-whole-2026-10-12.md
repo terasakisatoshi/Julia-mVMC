@@ -1,5 +1,10 @@
 # Linux Dev Container: L128 whole-run CPU, MPI and single-GPU comparison
 
+This report preserves the initial frozen implementation. The subsequent
+[GPU improvement comparison](linux-x86_64-devcontainer-L128-whole-2026-10-12/tiled-rankone-comparison.md)
+records optimization beating MPI16 and further PhysCal improvements, with
+separate source hashes and whole-run evidence.
+
 Measured on 2026-10-12 using the frozen numerical source from commit
 `dcb36b570389a2426369361b41f27b3d8e0e6528`. The primary cohort retains **320
 samples globally** at every measurement step, runs **20 optimization steps**,

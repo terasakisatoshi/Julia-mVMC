@@ -1,0 +1,163 @@
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+┌ Info: CPU/GPU numerical evidence
+│   model = "hubbard_chain_real"
+│   derivative_error = 2.4868995751603507e-14
+│   observable_error = 7.460698725481052e-14
+│   sr_condition = 2297.1442304275424
+│   update_error = 1.1362438767648086e-15
+└   sr_residual = 1.3772427773964935e-16
+[ Info: Parsing completed successfully
+┌ Info: CPU/GPU numerical evidence
+│   model = "heisenberg_chain_real"
+│   derivative_error = 1.9984014443252818e-15
+│   observable_error = 3.907985046680551e-14
+│   sr_condition = 5.330449172344122e6
+│   update_error = 1.5102724626459008e-11
+└   sr_residual = 1.0671017194339785e-16
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+┌ Info: Exhaustive Green comparison
+│   quantities = 5259
+└   max_error = 2.5934809855243657e-13
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Test Summary:                                      | Pass  Total   Time
+Device Pfaffians against CPU C-order factorization | 1350   1350  28.3s
+Test Summary:                                                      | Pass  Total   Time
+Resident projected wavefunctions match independent CPU calculation |  268    268  18.2s
+Test Summary:                                                  | Pass  Total   Time
+Resident energies, Green functions and analytic SR derivatives |   16     16  36.4s
+Test Summary:                                                        | Pass  Total  Time
+Shared UInt32 tape: proposals, rejection draws, and accept decisions |  360    360  2.0s
+Test Summary:                                                     | Pass  Total   Time
+CUDA production RNG and 20-step same-implementation repeatability |   11     11  12.2s
+Test Summary:                        | Pass  Total  Time
+CUDA input rejection before sampling |   10     10  0.8s
+Test Summary:                                             | Pass  Total  Time
+All ordinary one/two-body operator coincidences and signs |    2      2  1.4s
+Test Summary:                                      | Pass  Total  Time
+Exact cofactors of a singular individual QP sector |    5      5  0.7s
+Test Summary:                                                     | Pass  Total   Time
+Cooperative sampler preserves fixed proposal and acceptance paths | 1476   1476  20.4s
+Test Summary:                                        | Pass  Total  Time
+Cooperative Pfaffians preserve C-order factorization |   73     73  2.6s
+Test Summary:                                                       | Pass  Total  Time
+Independent operator threads preserve all coincidences and fallback |    4      4  5.1s
+Test Summary:                                               | Pass  Total  Time
+Warp CSC contraction obeys a floating-point reduction bound |   58     58  2.3s
+Test Summary:                                                         | Pass  Total  Time
+Fused cofactors preserve sparse contraction and invalid-walker output |    7      7  3.0s
+Test Summary:                                                  | Pass  Total  Time
+Cooperative C-order arithmetic survives projected cancellation |    4      4  1.7s
+Test Summary:                          | Pass  Total  Time
+Cooperative large-matrix inverse cache |  160    160  1.7s
+correlation delta nsite=6 valid_operators=600
+correlation delta nsite=128 valid_operators=1717
+Test Summary:                                  | Pass  Total  Time
+Incremental ordinary-operator correlation logs |    8      8  3.7s
+Test Summary:                                 | Pass  Total  Time
+Resident sparse Slater derivative contraction |    3      3  0.5s
+Test Summary:                              | Pass  Total  Time
+L128 sparse analytic derivatives match CPU |    8      8  8.6s
+Test Summary:                                                    | Pass  Total  Time
+Large cached sparse path retains singular-sector exact cofactors |    5      5  1.5s
+transformed Slater valid_operators=600 max_old_error=1.7763568394002505e-15 max_CPU_error=3.3084646133829665e-14
+Test Summary:                                            | Pass  Total  Time
+Resident transformed Slater columns and move corrections |    2      2  3.0s
+Test Summary:                                               | Pass  Total  Time
+Batched LU inverse residuals, singular status and transform |  120    120  2.6s
+L128 direct Slater maximum CPU difference: 0.0
+Test Summary:                                               | Pass  Total  Time
+Resident direct Slater assembly matches CPU operation order |    3      3  1.0s
+Test Summary:                                     | Pass  Total  Time
+C four-block assembly retains tiny raw parameters |    4      4  0.0s
+Test Summary:                                             | Pass  Total  Time
+Direct sparse Slater coefficients match CPU unit assembly | 1584   1584  7.3s
+Test Summary:                                                | Pass  Total   Time
+Resident hopping inverse cache preserves fixed control paths |  776    776  11.1s
+Test Summary:                                                  | Pass  Total   Time
+QP groups retain ordered sampling and inactive-group fallbacks |   80     80  13.3s
+Test Summary:                             | Pass  Total  Time
+Unbiased initial bounded UInt32 selection |    2      2  1.2s
+Test Summary:                                         | Pass  Total  Time
+Known permutation assigns constrained electron labels |    2      2  0.6s
+Test Summary:                                             | Pass  Total  Time
+Device initial states preserve filling and repeatable RNG |  136    136  1.6s
+Test Summary:                                         | Pass  Total  Time
+Device initializer bounded failure for zero amplitude |    1      1  0.0s
+Test Summary:                                      | Pass  Total  Time
+L128 device initialization independent CPU overlap |    3      3  1.3s
+Test Summary:                                                   | Pass  Total  Time
+Initial state rejects singular QP despite nonzero projected sum |    2      2  0.8s
+Test Summary:                                                       | Pass  Total  Time
+Optional initial Pfaffians preserve RNG and independent CPU factors |   10     10  2.3s
+Test Summary:                                              | Pass  Total  Time
+Resident parameter normalization follows CPU C-order gauge |    6      6  0.2s
+Test Summary:                                         | Pass  Total  Time
+Resident SR moments retain generic and CPU arithmetic |   10     10  0.3s
+Test Summary:                                        | Pass  Total  Time
+Resident direct SR solves and retains failure status |    5      5  0.3s
+Test Summary:                                                | Pass  Total  Time
+Cached L128 projected sampler follows shared20-step controls |  125    125  2.6s
+Test Summary:                                                      | Pass  Total  Time
+Empty-rank hopping and integer count deltas match translated tapes |  120    120  0.8s
+Test Summary:                                            | Pass  Total  Time
+Empty destination ranks match independent host selection |    2      2  0.8s
+Test Summary:                                                        | Pass  Total  Time
+Native sampling boundary publishes independent inverse and Pfaffians |  136    136  0.6s
+Test Summary:                                                     | Pass  Total  Time
+Startup Pfaffians reuse preserves native boundary results and RNG |    6      6  1.6s
+Test Summary:                                                   | Pass  Total  Time
+L128 complete optimization and PhysCal repeat on resident paths |   16     16  5.9s
+cache reuse maxerrors obs=8.08597633294994e-12 O=1.8871015861066098e-13
+cache inverse maximum normalized residual=1.816662613099625e-14
+cache reuse maxerrors obs=7.916241884231567e-7 O=3.6263372749090195e-8
+cache inverse maximum normalized residual=2.806273624908507e-16
+Test Summary:                                          | Pass  Total  Time
+L128 sampled inverse reuse independent CPU observables |   80     80  2.4s
+Test Summary:                                               | Pass  Total  Time
+Sampler inverse reuse retains singular QP cofactor fallback |    3      3  0.9s
+Test Summary:                                                 | Pass  Total  Time
+Tiled publication preserves transport bytes and partial tiles |   42     42  1.2s
+Test Summary:                                                    | Pass  Total  Time
+Static Hamiltonian gate preserves general and PhysCal transforms |    5      5  0.1s
+Test Summary:                                                  | Pass  Total  Time
+L128 rank-one energies match CPU after twenty cached proposals |   15     15  1.9s

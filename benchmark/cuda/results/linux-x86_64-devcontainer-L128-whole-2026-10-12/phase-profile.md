@@ -29,6 +29,10 @@ Optimization sampling is36.7% of the total, inverse refresh35.3%, observables16.
 
 The first experiments should therefore target sampling register/occupancy behavior and repeated Pfaffian/inverse refresh, with unchanged RNG controls and FP64 numerical checks. Observables/transformed-Slater work is the next measured target; profile inside that phase before choosing an implementation. Gauge and Slater refresh are already negligible.
 
+The subsequent [granular profile](granular-profile.md) separates native
+factorization/inversion, Pfaffians, observable GEMM, and layout publication.
+It records the launch variants that did not justify adoption.
+
 The20× budgets against the measured CPU1 baseline are3.856895s Opt and0.223270s Phys. Sampling plus initial warmup alone currently cost4.858185s Opt and0.469192s Phys. Optimizing inverse refresh alone cannot meet20×. For PhysCal, parsing and initial walker setup also cost0.230437s before sampling; reusable prepared-state workflows would need a separately labelled timing contract instead of silently removing those public-runner costs.
 
 Every instrumented run had finite results and identical reported energy:99.78135142945789 total Opt energy and116.86444093776177 Phys, matching the primary GPU320 energies/site after division by128. Phase medians need not sum exactly to the full-wall median because they come from different repetitions.

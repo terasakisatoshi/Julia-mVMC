@@ -1,0 +1,22 @@
+scope=diagnostic whole private compact runner versus unchanged public full-transform runner, commit694c224
+Julia=1.13.1 threads=1 BLAS=LBTConfig([ILP64] libopenblas64_.so)
+checkpoint_sha256=36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8
+modpara_sha256=41dde0457bfe9e533a98c4017796fc56864202429e8d215c25b1907624bd6fbc
+compact_source_sha256=6f29f6189af9d759a2b625a4384807c74b3275bab7bc5b6874c19af64bf1283b
+[ Info: Parsing completed successfully
+rep=0 label=full seconds=39.49305577 energy=116.86444093776177 accepted=15019
+[ Info: Parsing completed successfully
+rep=0 label=compact seconds=12.207517434 energy=116.86444093776177 accepted=15019
+[ Info: Parsing completed successfully
+rep=1 label=full seconds=0.834029022 energy=116.86444093776177 accepted=15019
+[ Info: Parsing completed successfully
+rep=1 label=compact seconds=0.772933428 energy=116.86444093776177 accepted=15019
+[ Info: Parsing completed successfully
+rep=2 label=full seconds=0.807889013 energy=116.86444093776177 accepted=15019
+[ Info: Parsing completed successfully
+rep=2 label=compact seconds=0.772584078 energy=116.86444093776177 accepted=15019
+[ Info: Parsing completed successfully
+rep=3 label=full seconds=0.81786401 energy=116.86444093776177 accepted=15019
+[ Info: Parsing completed successfully
+rep=3 label=compact seconds=0.7957351 energy=116.86444093776177 accepted=15019
+full_median=0.81786401 compact_median=0.772933428
