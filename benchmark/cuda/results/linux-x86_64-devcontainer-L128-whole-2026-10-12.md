@@ -15,6 +15,11 @@ is 6.15× / 4.78× faster than the one-rank CPU baseline; the requested 20×
 whole-run target was not reached. These are observed lifecycle timings with
 the sampling and output differences below, not effective-sample speedups.
 
+A subsequent [phase profile](linux-x86_64-devcontainer-L128-whole-2026-10-12/phase-profile.md)
+of the same source attributes 36.7% of optimization time to sampling, 35.3%
+to post-SR inverse refresh, and 16.3% to observables. Its synchronized diagnostic
+timings supplement this table; they do not replace the public-runner medians.
+
 ## Primary cohort: 320 samples globally
 
 CPU cells use genuine MPI worlds, one Julia worker thread and one BLAS thread
