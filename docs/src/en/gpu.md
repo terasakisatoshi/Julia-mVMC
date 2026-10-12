@@ -207,7 +207,7 @@ The whole-run Dev Container comparison uses L128, 320 retained samples globally,
 20 optimization steps and one PhysCal run. The initial three-repeat GPU result
 was 12.55 s / 0.934 s versus a one-rank CPU baseline of 77.14 s / 4.465 s.
 After the additional optimizations, a separate five-repeat confirmation measured
-one GPU at 10.49 s / 0.762 s and MPI with 16 independent groups at
+one GPU at 10.48 s / 0.761 s and MPI with 16 independent groups at
 11.21 s / 0.781 s. Both GPU medians are lower in that confirmation, but the
 PhysCal timing ranges overlap. The 20× CPU target remains unmet.
 See the [complete measurements](gpu_benchmark.md) for every revision and

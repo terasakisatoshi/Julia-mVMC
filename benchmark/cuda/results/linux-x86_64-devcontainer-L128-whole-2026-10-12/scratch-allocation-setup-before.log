@@ -1,0 +1,12 @@
+setup_baseline kind=phys configuration_sha256=2f9599f912d3918687edba858679f71162036ff209c127919ae4678351b600c7 future_rng_sha256=306c5d4a84d59123153e6cfa435451189ce7572a53be625905ff1631967fbf37 counts_sum=0
+setup_workspace kind=phys internal_rows_empty=true internal_transform_empty=true
+allocation_setup kind=phys phase=initialization min_median_max_wall=(0.108687218, 0.108737647, 0.108780349)
+allocation_setup kind=phys phase=workspaces min_median_max_wall=(0.006939686, 0.00716828, 0.007616785)
+allocation_setup kind=phys phase=combined min_median_max_wall=(0.117196489, 0.117358465, 0.121967451)
+setup_baseline kind=opt configuration_sha256=2f9599f912d3918687edba858679f71162036ff209c127919ae4678351b600c7 future_rng_sha256=306c5d4a84d59123153e6cfa435451189ce7572a53be625905ff1631967fbf37 counts_sum=0
+setup_workspace kind=opt internal_rows_empty=false internal_transform_empty=false
+allocation_setup kind=opt phase=initialization min_median_max_wall=(0.141986837, 0.142299718, 0.143306735)
+allocation_setup kind=opt phase=workspaces min_median_max_wall=(0.009381417, 0.00946149, 0.009687235)
+allocation_setup kind=opt phase=combined min_median_max_wall=(0.151181386, 0.151384553, 0.15187663)
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully

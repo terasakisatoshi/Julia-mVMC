@@ -19,6 +19,7 @@ Cold compilation/execution is excluded from these medians.
 | GPU1, `49c9bc7` plus parallel-QP initialization, original 3 repeats | 10.488677221 | 0.763737508 |
 | GPU1, `49c9bc7`, separate 5-repeat confirmation | 10.493063189 | 0.762302185 |
 | MPI16 independent groups, fresh 5-repeat confirmation | 11.211987096 | 0.780964168 |
+| GPU1, final `4eb9c69` scratch allocation cleanup, 5 repeats | 10.480310359 | 0.761288583 |
 
 At `020f95d`, optimization is 1.55% faster than the frozen MPI16 median;
 PhysCal remains 19.12% slower. At `eb6ab29`, the PhysCal gap falls to 13.97%.
@@ -122,4 +123,40 @@ Evidence: [original GPU 3-repeat log](whole-gpu-total320-49c9bc7.log),
 [fresh MPI16 5-repeat log](mpi-groups-16-total320-confirm5.log),
 [MPI source inventory](mpi-groups-16-total320-confirm5-source-sha256.txt),
 [MPI input/checkpoint inventory](mpi-groups-16-total320-confirm5-input-sha256.txt).
-The final combined source's full GPU suite remains to be run.
+The final combined source's full GPU suite passed, as recorded below.
+
+## Final public-runner revision
+
+The final `4eb9c69` run keeps the same unchanged public benchmark driver,
+canonical checkpoint/input, one GPU, 320 configurations, 20 optimization
+steps, one PhysCal run, seed 79, warmup/interval settings, affinity and thread
+limits. Five warm optimization times are 10.455130595, 10.503898336,
+10.460688209, 10.490918855 and 10.480310359 seconds. Five warm PhysCal times
+are 0.770464356, 0.758499544, 0.766776175, 0.761288583 and 0.752144169 seconds.
+All repetitions were retained; no numerical source changed during timing.
+
+The final GPU medians are 6.53% faster for optimization and 2.52% faster for
+PhysCal than the fresh five-repeat MPI16 medians. The PhysCal median is also
+1.231321 ms (0.1615%) below the historical MPI16 median. PhysCal ranges still
+overlap: final GPU 0.752144169–0.770464356 s versus fresh MPI16
+0.766651869–0.791917308 s. These results establish median wins for both
+workloads in this measured setup, with a narrow PhysCal margin over the
+historical measurement; they do not establish a speedup larger than variation
+between runs.
+Returned GPU energies and last-interval accepted counts are unchanged across
+all repetitions and previous GPU revisions.
+
+Evidence: [final public-runner log](whole-gpu-total320-4eb9c69-confirm5.log),
+[final source inventory](whole-gpu-total320-4eb9c69-source-sha256.txt),
+[final runtime receipt](whole-gpu-total320-4eb9c69-runtime.txt).
+The frozen final `4eb9c69` revision's complete GPU suite passed 8,326 assertions
+in 59 testsets in the Dev Container on device 0 after timing completed; see the
+[final suite log](4eb9c69-full-container-gpu-suite.log) and
+[all-extension/test/CPU source inventory](whole-gpu-total320-4eb9c69-source-sha256.txt).
+This includes independently computed CPU observables, strongly cancelling
+configurations, singular-QP fallbacks, poisoned scratch buffers, and public
+20-step optimization/20-save PhysCal repeatability with exact configurations,
+counts and future UInt32 RNG words. Earlier revision suite counts remain
+preserved above. The [scratch allocation report](scratch-allocation-report.md)
+records the focused validation and setup measurements separately from the
+whole public-runner timing.

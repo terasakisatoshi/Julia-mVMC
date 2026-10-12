@@ -1,0 +1,21 @@
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Test Summary:                                          | Pass  Total  Time
+Parallel QP initializer preserves ordered PF and state |   30     30  4.8s
+Test Summary:                                           | Pass  Total  Time
+Previously skipped QP matrices are initialized on retry |   23     23  0.2s
+Test Summary:                                                 | Pass  Total  Time
+Private large Phys initializer preserves serial state and RNG |   10     10  0.3s
+Test Summary:                                               | Pass  Total  Time
+Batched LU inverse residuals, singular status and transform |  124    124  8.5s
+Test Summary:                                                        | Pass  Total  Time
+Native sampling boundary publishes independent inverse and Pfaffians |  140    140  9.1s
+Test Summary:                                                     | Pass  Total  Time
+Startup Pfaffians reuse preserves native boundary results and RNG |    8      8  1.8s
+Test Summary:                                                    | Pass  Total  Time
+Static Hamiltonian gate preserves general and PhysCal transforms |    5      5  0.1s
+Test Summary:                                                  | Pass  Total   Time
+L128 rank-one energies match CPU after twenty cached proposals |   27     27  21.0s
