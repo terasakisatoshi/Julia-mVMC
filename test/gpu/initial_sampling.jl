@@ -13,6 +13,28 @@ function bounded_probe!(output,tape,bounds)
     end
     return nothing
 end
+@testset "Large initializer register cap preserves wavefunctions and RNG" begin
+    path=joinpath(@__DIR__,"..","..","benchmark","cuda","inputs","hubbard_chain_L128","namelist.def")
+    data,_=GPU.prepared_gpu_data(path;seed=79)
+    s,pfs=GPU.initial_gpu_state(data,8;seed=123,return_pfaffians=true)
+    before=(cfg=Array(s.configurations),counts=Array(s.counts),pivots=Array(s.pivots),
+        overlaps=Array(s.overlaps),logs=Array(s.logcorrelations),pfs=Array(pfs))
+    future=Array(CUDA.rand(UInt32,16))
+    repeated=GPU.initial_gpu_state(data,8;seed=123)
+    @test Array(CUDA.rand(UInt32,16))==future
+    @test Array(repeated.configurations)==before.cfg
+    pending=CUDA.fill(true,8);candidate=CUDA.fill(true,8)
+    # Independent uncapped launch on the identical configurations.
+    CUDA.@cuda threads=128 blocks=8 fastmath=false GPU.initial_wavefunction_kernel!(
+        GPU.initial_state_view(s),pending,candidate,pfs)
+    @test Array(s.configurations)==before.cfg
+    @test Array(s.counts)==before.counts
+    @test Array(s.pivots)==before.pivots
+    @test Array(s.overlaps)≈before.overlaps atol=1e-10 rtol=1e-12
+    @test Array(s.logcorrelations)≈before.logs atol=1e-12 rtol=1e-12
+    @test Array(pfs)≈before.pfs atol=1e-10 rtol=1e-12
+    @test !any(Array(pending))
+end
 @testset "Unbiased initial bounded UInt32 selection" begin
     tape=CuArray(UInt32[0 0 0xffffffff;4 1 0xffffffff;9 2 0])
     bounds=CuArray(Int64[3,1,2147483649])

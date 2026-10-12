@@ -35,9 +35,12 @@ const GPU = Base.get_extension(MVMCOptimizers,:MVMCCUDAExt)
             CUDA.zeros(Float64,n,2ns-n,count),CUDA.zeros(Float64,n,2ns-n,count),
             CuArray([1.0]),CuArray([0.0]),CUDA.zeros(Int32,2ns-n,batch),CUDA.zeros(Int32,2ns,batch))
         entries = n*n*count
+        fill!(work.lu,NaN)
+        fill!(work.factors,NaN)
         CUDA.@cuda threads=256 blocks=cld(entries,256) fastmath=false GPU.fill_batched_slater!(
             work.lu,work.factors,device_cfg,device_slater,ns,ne,batch,count)
         packed = Array(work.lu)
+        @test all(isfinite,packed) # Every gathered entry, including singular QPs.
         CUDA.@cuda threads=128 blocks=count fastmath=false GPU.cooperative_pfaffian_kernel!(
             work.pfaffians,work.factors,work.pf_pivots,n)
         CUDA.cuBLAS.cublasDgetrfBatched(CUDA.cuBLAS.handle(),n,work.lu_ptrs,n,

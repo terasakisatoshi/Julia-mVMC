@@ -100,7 +100,7 @@ end
     return ip
 end
 
-@inline function update_sampling_inverse!(s,c,a,b,::Val{N},::Val{G}) where {N,G}
+@inline function update_sampling_inverse!(s,c,a,b,::Val{N},::Val{G},::Val{H}) where {N,G,H}
     n=N
     # Rebuild uses the first n entries of this same scratch only after all
     # inverse updates finish; the two phases do not overlap.
@@ -133,6 +133,38 @@ end
             end
         end
         sync_threads()
+        if H && G==1
+            tile=CuDynamicSharedArray(Float64,(33,32),16n)
+            for column_tile in 0:cld(n,32)-1, row_tile in 0:column_tile
+                # Compute only upper entries with their original ordered RN
+                # operations. Adjacent lanes read/store adjacent matrix rows.
+                for index in local_lane:128:1024
+                    ri=(index-1)%32+1;cj=(index-1)÷32+1
+                    i=32row_tile+ri;j=32column_tile+cj
+                    if i<=n && j<=n && i<j
+                        delta=CUDA.add_rn(CUDA.mul_rn(vec1[i],vec2[j]),-CUDA.mul_rn(vec1[j],vec2[i]))
+                        x=CUDA.add_rn(c.inverse[i,j,q,b],delta)
+                        j==a && (x=CUDA.add_rn(x,-vec2[i]))
+                        i==a && (x=CUDA.add_rn(x,vec2[j]))
+                        c.inverse[i,j,q,b]=x
+                        tile[ri,cj]=x
+                    elseif i==j && i<=n
+                        c.inverse[i,j,q,b]=0.0
+                    end
+                end
+                sync_threads()
+                # Transpose shared coordinates, rather than global stores,
+                # so the sign-mirrored lower entries are also coalesced.
+                for index in local_lane:128:1024
+                    ri=(index-1)%32+1;cj=(index-1)÷32+1
+                    i=32column_tile+ri;j=32row_tile+cj
+                    if i<=n && j<=n && i>j
+                        c.inverse[i,j,q,b]=-tile[cj,ri]
+                    end
+                end
+                sync_threads()
+            end
+        else
         for index in local_lane:128:n*n
             if q<=s.nqp
             i=(index-1)%n+1
@@ -143,6 +175,7 @@ end
             i==a && (x=CUDA.add_rn(x,vec2[j]))
             c.inverse[i,j,q,b]=x
             end
+        end
         end
         if local_lane==1 && q<=s.nqp
             c.pfaffians[q,b]=c.candidate_pf[q,b]
@@ -228,7 +261,8 @@ end
 end
 
 function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
-                                 incremental_correlation,dimension::Val{N},groups::Val{G}=Val(1)) where {N,G}
+                                 incremental_correlation,dimension::Val{N},groups::Val{G}=Val(1),
+                                 triangle::Val{H}=Val(false)) where {N,G,H}
     b=blockIdx().x
     lane=threadIdx().x
     move=CuStaticSharedArray(Int32,8) # valid,a,c,old site a,old site c,rank,accept,rebuild
@@ -347,7 +381,7 @@ function cached_sampling_kernel!(s,c,tape,exchange_fraction,empty_destinations,
                         values[1]=sampling_cache_overlap(s,c,b)
                     end
                 else
-                    update_sampling_inverse!(s,c,Int(move[2]),b,dimension,groups)
+                    update_sampling_inverse!(s,c,Int(move[2]),b,dimension,groups,triangle)
                 end
             end
         end
@@ -379,16 +413,17 @@ end
 
 function sample_with_cache!(s,cache::GPUSamplingCache,draws,exchange_fraction;
                             empty_destinations=false,incremental_correlation=false,qp_groups::Int=1,
-                            kernel_maxregs::Int=64)
+                            kernel_maxregs::Int=64,triangle_update::Bool=false)
     qp_groups in (1,2,4,8) || throw(ArgumentError("qp_groups must be 1, 2, 4, or 8"))
     1<=kernel_maxregs<=255 || throw(ArgumentError("kernel_maxregs must be between 1 and 255"))
     cache.owner===s || throw(ArgumentError("sampling cache belongs to a different state"))
     batch=size(s.configurations,2)
     shared=16*(2s.nelec)*qp_groups
+    triangle_update && qp_groups==1 && (shared+=33*32*sizeof(Float64))
     state=merge(cooperative_state(s),(;cooperative_factors=cache.factors))
     !cache.initialized && refresh_sampling_state!(s,cache)
     @cuda threads=128qp_groups blocks=batch shmem=shared maxregs=kernel_maxregs fastmath=false cached_sampling_kernel!(
         state,sampling_cache_state(cache),draws,Float64(exchange_fraction),
-        empty_destinations,incremental_correlation,Val(2s.nelec),Val(qp_groups))
+        empty_destinations,incremental_correlation,Val(2s.nelec),Val(qp_groups),Val(triangle_update))
     return s
 end

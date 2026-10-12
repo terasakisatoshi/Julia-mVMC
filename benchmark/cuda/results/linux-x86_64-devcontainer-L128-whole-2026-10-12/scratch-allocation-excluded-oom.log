@@ -1,0 +1,44 @@
+setup_baseline kind=phys configuration_sha256=2f9599f912d3918687edba858679f71162036ff209c127919ae4678351b600c7 future_rng_sha256=306c5d4a84d59123153e6cfa435451189ce7572a53be625905ff1631967fbf37 counts_sum=0
+setup_workspace kind=phys internal_rows_empty=true internal_transform_empty=true
+allocation_setup kind=phys phase=initialization min_median_max_wall=(0.107838756, 0.107980798, 0.108995394)
+[ Info: Parsing completed successfully
+ERROR: LoadError: Out of GPU memory trying to allocate 320.000 MiB
+Effective GPU memory usage: 99.94% (11.621 GiB/11.629 GiB)
+Memory pool usage: 10.890 GiB (11.125 GiB reserved)
+
+Stacktrace:
+  [1] _pool_alloc
+    @ /opt/host-julia-depot/packages/CUDACore/6N8AA/src/memory.jl:747 [inlined]
+  [2] macro expansion
+    @ /opt/host-julia-depot/packages/CUDACore/6N8AA/src/memory.jl:704 [inlined]
+  [3] macro expansion
+    @ ./timing.jl:463 [inlined]
+  [4] pool_alloc
+    @ /opt/host-julia-depot/packages/CUDACore/6N8AA/src/memory.jl:703 [inlined]
+  [5] (::CUDACore.var"#763#764"{CUDACore.DeviceMemory, Int64})()
+    @ CUDACore /opt/host-julia-depot/packages/CUDACore/6N8AA/src/array.jl:93
+  [6] cached_alloc(f::CUDACore.var"#763#764"{CUDACore.DeviceMemory, Int64}, key::Tuple{UnionAll, CuDevice, DataType, Int64})
+    @ GPUArrays /opt/host-julia-depot/packages/GPUArrays/mdIMW/src/host/alloc_cache.jl:36
+  [7] CuArray
+    @ /opt/host-julia-depot/packages/CUDACore/6N8AA/src/array.jl:92 [inlined]
+  [8] similar
+    @ /opt/host-julia-depot/packages/CUDACore/6N8AA/src/array.jl:193 [inlined]
+  [9] MVMCCUDAExt.BatchedSamplingInverse(s::MVMCCUDAExt.CUDAState)
+    @ MVMCCUDAExt ~/.cache/mvmc/julia-whole-49c9bc7/MVMCOptimizers.jl/ext/cuda_sampling_inverse.jl:19
+ [10] setup
+    @ /tmp/bench-undef-scratch-setup.jl:12 [inlined]
+ [11] #6
+    @ /tmp/bench-undef-scratch-setup.jl:41 [inlined]
+ [12] timed(f::var"#6#7"{Bool, MVMCExpertModeParsers.ExpertModeData}, reps::Int64)
+    @ Main /tmp/bench-undef-scratch-setup.jl:25
+ [13] timed(f::Function)
+    @ Main /tmp/bench-undef-scratch-setup.jl:22
+ [14] top-level scope
+    @ /tmp/bench-undef-scratch-setup.jl:41
+ [15] include(mod::Module, _path::String)
+    @ Base ./Base.jl:309
+ [16] exec_options(opts::Base.JLOptions)
+    @ Base ./client.jl:344
+ [17] _start()
+    @ Base ./client.jl:577
+in expression starting at /tmp/bench-undef-scratch-setup.jl:31

@@ -1,5 +1,11 @@
 # Linux Dev Container: L128 whole-run CPU, MPI and single-GPU comparison
 
+This report preserves the initial frozen implementation. The subsequent
+[GPU improvement comparison](linux-x86_64-devcontainer-L128-whole-2026-10-12/tiled-rankone-comparison.md)
+records lower GPU medians for both workloads in the fresh MPI16 comparison,
+with overlapping PhysCal timing ranges, separate source hashes and whole-run
+evidence.
+
 Measured on 2026-10-12 using the frozen numerical source from commit
 `dcb36b570389a2426369361b41f27b3d8e0e6528`. The primary cohort retains **320
 samples globally** at every measurement step, runs **20 optimization steps**,
@@ -14,6 +20,11 @@ and 0.762520 s for PhysCal, versus the GPU's 12.5482 s and 0.933714 s. The GPU
 is 6.15× / 4.78× faster than the one-rank CPU baseline; the requested 20×
 whole-run target was not reached. These are observed lifecycle timings with
 the sampling and output differences below, not effective-sample speedups.
+
+A subsequent [phase profile](linux-x86_64-devcontainer-L128-whole-2026-10-12/phase-profile.md)
+of the same source attributes 36.7% of optimization time to sampling, 35.3%
+to post-SR inverse refresh, and 16.3% to observables. Its synchronized diagnostic
+timings supplement this table; they do not replace the public-runner medians.
 
 ## Primary cohort: 320 samples globally
 

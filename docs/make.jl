@@ -1,6 +1,7 @@
 using Documenter
 
 const CUDA_BENCHMARK_FILES = [
+    "linux-x86_64-devcontainer-L128-whole-2026-10-12/tiled-rankone-comparison.md",
     "linux-x86_64-devcontainer-L128-whole-2026-10-12.md",
     "linux-x86_64-rtx3060-L128-whole-2026-10-12.md",
     "linux-x86_64-rtx3060-L128-2026-10-12.md",
@@ -16,7 +17,7 @@ function cuda_benchmark_report(file)
         if startswith(target, "#") || occursin(r"^[A-Za-z][A-Za-z0-9+.-]*:", target)
             return matched
         end
-        path = normpath(joinpath("benchmark", "cuda", "results", target))
+        path = normpath(joinpath("benchmark", "cuda", "results", dirname(file), target))
         kind = endswith(target, "/") ? "tree" : "blob"
         return "](https://github.com/tmisawa/Julia-mVMC/$kind/main/$path)"
     end)

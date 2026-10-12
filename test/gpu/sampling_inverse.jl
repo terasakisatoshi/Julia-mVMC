@@ -12,7 +12,10 @@ CUDA.allowscalar(false)
         expected=Array(s.overlaps)
         cache=GPU.GPUSamplingCache(s)
         work=GPU.BatchedSamplingInverse(s)
+        fill!(work.lu,NaN)
+        fill!(work.factors,NaN)
         GPU.refresh_sampling_state!(s,cache,work)
+        @test all(isfinite,Array(work.lu))
         @test Array(s.overlaps)≈expected atol=1e-9 rtol=1e-9
         @test all(Array(cache.valid))
         inverse=Array(cache.inverse)
@@ -27,7 +30,9 @@ CUDA.allowscalar(false)
         @test Array(cache.accepted_since_refactor)==zeros(Int32,4)
         # Refresh is deterministic and resets accumulated acceptance counts.
         fill!(cache.accepted_since_refactor,5)
+        fill!(work.lu,NaN)
         GPU.refresh_sampling_state!(s,cache,work)
+        @test all(isfinite,Array(work.lu))
         @test Array(cache.accepted_since_refactor)==zeros(Int32,4)
     end
 end
@@ -40,7 +45,10 @@ end
         s,pf=GPU.initial_gpu_state(data,8;seed=79,return_pfaffians=true)
         cache=GPU.GPUSamplingCache(s)
         work=GPU.BatchedSamplingInverse(s)
+        fill!(work.lu,NaN)
+        fill!(work.factors,NaN)
         GPU.refresh_sampling_state!(s,cache,work;initial_pfaffians=reuse ? pf : nothing)
+        @test all(isfinite,Array(work.lu))
         push!(results,(;cfg=Array(s.configurations),pf=Array(cache.pfaffians),
             inverse=Array(cache.inverse),valid=Array(cache.valid),overlap=Array(s.overlaps)))
         push!(future,Array(CUDA.rand(UInt32,64)))

@@ -86,6 +86,16 @@ cuBLAS GEMM; large lattices use resident CSC coefficients and fuse cofactor
 evaluation with contraction. SR moments use cuBLAS, and direct
 SR uses cuSOLVER Cholesky.
 
+Large cached hopping updates compute the upper inverse triangle and publish the
+lower triangle by its skew sign. Matrix publication uses shared-memory tiles.
+Optimization with only one-body and diagonal two-body terms skips the full
+Slater transform. PhysCal omits the derivative-only basis and, when only a few
+transform columns are required, computes those columns and obtains other
+entries from ordered inverse-row dot products. General operators and singular
+sectors retain their full-transform or cofactor paths. Large PhysCal batches
+initialize projection sectors in parallel, retaining the ordered projection
+sum and the original random draw sequence.
+
 Variance cutoffs, ordered parameter gauge shifts, solver status and energy
 history stay on GPU throughout optimization. Native cuSOLVER status is checked
 once before final reporting; failed solves do not update parameters. The final
@@ -194,9 +204,12 @@ Large-lattice debug paths can be selected independently with
 legacy proposal mode as their independent reference.
 
 The whole-run Dev Container comparison uses L128, 320 retained samples globally,
-20 optimization steps, one PhysCal run and three warmed repetitions. One GPU
-took 12.55 s / 0.934 s versus a one-rank CPU baseline of 77.14 s / 4.465 s.
-MPI with 16 independent sampling groups was fastest at 11.17 s / 0.763 s;
-MPI with four or eight groups was slower than the GPU. The 20× target remains
-unmet. See the [complete measurements](gpu_benchmark.md) for short-warmup,
-chain, output and proposal-budget differences and the recorded source hashes.
+20 optimization steps and one PhysCal run. The initial three-repeat GPU result
+was 12.55 s / 0.934 s versus a one-rank CPU baseline of 77.14 s / 4.465 s.
+After the additional optimizations, a separate five-repeat confirmation measured
+one GPU at 10.48 s / 0.761 s and MPI with 16 independent groups at
+11.21 s / 0.781 s. Both GPU medians are lower in that confirmation, but the
+PhysCal timing ranges overlap. The 20× CPU target remains unmet.
+See the [complete measurements](gpu_benchmark.md) for every revision and
+repetition, short-warmup, chain, output and proposal-budget differences, and
+the recorded source hashes.

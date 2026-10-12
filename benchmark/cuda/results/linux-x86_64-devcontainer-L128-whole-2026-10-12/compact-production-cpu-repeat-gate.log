@@ -1,0 +1,26 @@
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+Test Summary:                                              | Pass  Total  Time
+Compact eligibility retains general and small matrix paths |    4      4  0.4s
+Test Summary:                                                   | Pass  Total     Time
+Compact Phys twenty saves repeat RNG and independent CPU Greens |    8      8  1m13.3s
+compact physical columns=Int32[1, 129]
+compact versus full GEMM maximum absolute difference=1.687538997430238e-14
+first compact versus full difference index=CartesianIndex(3, 1) values=(0.8719670799501332, 0.8719670799501335)
+cache reuse maxerrors obs=1.0551559626037488e-12 O=1.9539925233402755e-13
+cache inverse maximum normalized residual=2.703724994646917e-14
+compact physical columns=Int32[1, 129]
+compact versus full GEMM maximum absolute difference=2.3283064365386963e-8
+first compact versus full difference index=CartesianIndex(131, 1) values=(355035.9555828361, 355035.9555828364)
+cache reuse maxerrors obs=1.9297003746032715e-6 O=6.949994713068008e-8
+cache inverse maximum normalized residual=3.8794206186588656e-16
+compact physical columns=Int32[1, 129]
+compact versus full GEMM maximum absolute difference=2.6645352591003757e-15
+first compact versus full difference index=CartesianIndex(133, 1) values=(-0.13795302886552877, -0.1379530288655286)
+cache reuse maxerrors obs=1.2221335055073723e-12 O=2.5368596112684827e-14
+cache inverse maximum normalized residual=3.5202070417331422e-15
+Test Summary:                                          | Pass  Total   Time
+L128 sampled inverse reuse independent CPU observables |  110    110  27.3s
+Test Summary:                                               | Pass  Total  Time
+Sampler inverse reuse retains singular QP cofactor fallback |    4      4  4.9s

@@ -1,0 +1,90 @@
+scope=DevContainer GPU1 FP64 B320 n128 count2560; frozen production state after20SRsteps; synchronized wall timing; no device-event timings; no RNG in refresh/tuning
+stage rep=1 name=correlation_only_diagnostic wall_seconds=0.001681469
+stage rep=1 name=fill wall_seconds=0.002194277
+stage rep=1 name=getrf wall_seconds=0.04193355
+stage rep=1 name=getri wall_seconds=0.069125556
+stage rep=1 name=pf wall_seconds=0.098795361
+stage rep=1 name=publish_combined_correlation wall_seconds=0.001875087
+stage rep=1 name=publish_inverse wall_seconds=0.002110316
+stage rep=1 name=publish_only_diagnostic wall_seconds=4.2046e-5
+stage rep=1 name=skew wall_seconds=0.003659539
+stage rep=2 name=correlation_only_diagnostic wall_seconds=0.001684356
+stage rep=2 name=fill wall_seconds=0.015475794
+stage rep=2 name=getrf wall_seconds=0.041960063
+stage rep=2 name=getri wall_seconds=0.069114985
+stage rep=2 name=pf wall_seconds=0.098769524
+stage rep=2 name=publish_combined_correlation wall_seconds=0.001874946
+stage rep=2 name=publish_inverse wall_seconds=0.00210886
+stage rep=2 name=publish_only_diagnostic wall_seconds=4.3547e-5
+stage rep=2 name=skew wall_seconds=0.003637383
+stage rep=3 name=correlation_only_diagnostic wall_seconds=0.001680677
+stage rep=3 name=fill wall_seconds=0.002173931
+stage rep=3 name=getrf wall_seconds=0.041960236
+stage rep=3 name=getri wall_seconds=0.069102535
+stage rep=3 name=pf wall_seconds=0.098786215
+stage rep=3 name=publish_combined_correlation wall_seconds=0.001854763
+stage rep=3 name=publish_inverse wall_seconds=0.002105056
+stage rep=3 name=publish_only_diagnostic wall_seconds=3.7127e-5
+stage rep=3 name=skew wall_seconds=0.003633991
+stage rep=4 name=correlation_only_diagnostic wall_seconds=0.001680452
+stage rep=4 name=fill wall_seconds=0.002177331
+stage rep=4 name=getrf wall_seconds=0.041876658
+stage rep=4 name=getri wall_seconds=0.069097803
+stage rep=4 name=pf wall_seconds=0.098708654
+stage rep=4 name=publish_combined_correlation wall_seconds=0.001854984
+stage rep=4 name=publish_inverse wall_seconds=0.002102895
+stage rep=4 name=publish_only_diagnostic wall_seconds=3.7594e-5
+stage rep=4 name=skew wall_seconds=0.003649716
+stage rep=5 name=correlation_only_diagnostic wall_seconds=0.001679904
+stage rep=5 name=fill wall_seconds=0.002176717
+stage rep=5 name=getrf wall_seconds=0.041991639
+stage rep=5 name=getri wall_seconds=0.069109202
+stage rep=5 name=pf wall_seconds=0.098749072
+stage rep=5 name=publish_combined_correlation wall_seconds=0.001860734
+stage rep=5 name=publish_inverse wall_seconds=0.002102226
+stage rep=5 name=publish_only_diagnostic wall_seconds=3.6949e-5
+stage rep=5 name=skew wall_seconds=0.003647234
+stage_median name=correlation_only_diagnostic wall_seconds=0.001680677
+stage_median name=fill wall_seconds=0.002177331
+stage_median name=getrf wall_seconds=0.041960063
+stage_median name=getri wall_seconds=0.069109202
+stage_median name=pf wall_seconds=0.098769524
+stage_median name=publish_combined_correlation wall_seconds=0.001860734
+stage_median name=publish_inverse wall_seconds=0.002105056
+stage_median name=publish_only_diagnostic wall_seconds=3.7594e-5
+stage_median name=skew wall_seconds=0.003647234
+independent_CPU_PF_checks=24pass
+PF_candidate static=false threads=32 maxregs=32 registers=32 memory=(var"local" = 280, shared = 37, constant = 0) min_median_max=(0.10804253, 0.108940507, 0.113854532) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=32 maxregs=48 registers=48 memory=(var"local" = 224, shared = 37, constant = 0) min_median_max=(0.105920574, 0.106770348, 0.1068851) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=32 maxregs=64 registers=64 memory=(var"local" = 152, shared = 37, constant = 0) min_median_max=(0.102505135, 0.103136758, 0.104012184) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=32 maxregs=128 registers=118 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.098838552, 0.098855547, 0.098937468) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=64 maxregs=32 registers=32 memory=(var"local" = 280, shared = 37, constant = 0) min_median_max=(0.10395524, 0.104010502, 0.10406051) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=64 maxregs=48 registers=48 memory=(var"local" = 224, shared = 37, constant = 0) min_median_max=(0.099676893, 0.099698082, 0.100146068) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=64 maxregs=64 registers=64 memory=(var"local" = 152, shared = 37, constant = 0) min_median_max=(0.098513436, 0.098522899, 0.098534209) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=64 maxregs=128 registers=118 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.099530774, 0.099563768, 0.099614104) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=128 maxregs=32 registers=32 memory=(var"local" = 280, shared = 37, constant = 0) min_median_max=(0.11113815, 0.111239037, 0.111264373) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=128 maxregs=48 registers=48 memory=(var"local" = 224, shared = 37, constant = 0) min_median_max=(0.103508765, 0.103527342, 0.103563239) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=128 maxregs=64 registers=64 memory=(var"local" = 152, shared = 37, constant = 0) min_median_max=(0.09934599, 0.099356975, 0.100281027) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=128 maxregs=128 registers=118 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.100462833, 0.100534107, 0.102135991) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=256 maxregs=32 registers=32 memory=(var"local" = 280, shared = 37, constant = 0) min_median_max=(0.136661857, 0.136880265, 0.136965971) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=256 maxregs=48 registers=48 memory=(var"local" = 224, shared = 37, constant = 0) min_median_max=(0.12064175, 0.120715357, 0.120815682) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=256 maxregs=64 registers=64 memory=(var"local" = 152, shared = 37, constant = 0) min_median_max=(0.106009515, 0.106079411, 0.106167726) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=false threads=256 maxregs=128 registers=118 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.11243532, 0.112467073, 0.112476097) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=32 maxregs=32 registers=32 memory=(var"local" = 248, shared = 37, constant = 0) min_median_max=(0.135200358, 0.135203424, 0.135280917) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=32 maxregs=48 registers=48 memory=(var"local" = 192, shared = 37, constant = 0) min_median_max=(0.132519608, 0.132537362, 0.132601546) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=32 maxregs=64 registers=64 memory=(var"local" = 120, shared = 37, constant = 0) min_median_max=(0.132031636, 0.13206893, 0.13208339) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=32 maxregs=128 registers=110 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.131089938, 0.131117338, 0.131135994) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=64 maxregs=32 registers=32 memory=(var"local" = 248, shared = 37, constant = 0) min_median_max=(0.131838264, 0.131855457, 0.131874504) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=64 maxregs=48 registers=48 memory=(var"local" = 192, shared = 37, constant = 0) min_median_max=(0.131258288, 0.131283285, 0.131291199) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=64 maxregs=64 registers=64 memory=(var"local" = 120, shared = 37, constant = 0) min_median_max=(0.131150814, 0.13115897, 0.131186124) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=64 maxregs=128 registers=110 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.13140726, 0.131418365, 0.131460894) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=128 maxregs=32 registers=32 memory=(var"local" = 248, shared = 37, constant = 0) min_median_max=(0.132485179, 0.132520719, 0.132552945) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=128 maxregs=48 registers=48 memory=(var"local" = 192, shared = 37, constant = 0) min_median_max=(0.131340418, 0.131382476, 0.131446736) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=128 maxregs=64 registers=64 memory=(var"local" = 120, shared = 37, constant = 0) min_median_max=(0.131204874, 0.131213744, 0.131241412) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=128 maxregs=128 registers=110 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.132729895, 0.132763131, 0.132781629) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=256 maxregs=32 registers=32 memory=(var"local" = 248, shared = 37, constant = 0) min_median_max=(0.153238083, 0.153368429, 0.153450959) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=256 maxregs=48 registers=48 memory=(var"local" = 192, shared = 37, constant = 0) min_median_max=(0.135610494, 0.135613401, 0.135641261) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=256 maxregs=64 registers=64 memory=(var"local" = 120, shared = 37, constant = 0) min_median_max=(0.134309654, 0.134346786, 0.134408294) factor_normalized_error=0.0 parity=PASS
+PF_candidate static=true threads=256 maxregs=128 registers=110 memory=(var"local" = 32, shared = 37, constant = 0) min_median_max=(0.146050803, 0.146083025, 0.146096952) factor_normalized_error=0.0 parity=PASS
+[ Info: Parsing completed successfully
+all_candidates_finished=true; state_rng_untouched_by_refresh=true

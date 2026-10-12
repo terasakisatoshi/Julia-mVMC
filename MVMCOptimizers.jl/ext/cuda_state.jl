@@ -6,7 +6,7 @@ struct CUDAState
     nqp::Int
     threads::Int
     parameters::CuVector{Float64}
-    basis::Union{CuMatrix{Float64},CUDA.cuSPARSE.CuSparseMatrixCSC{Float64,Int32}}
+    basis::Union{Nothing,CuMatrix{Float64},CUDA.cuSPARSE.CuSparseMatrixCSC{Float64,Int32}}
     slater::CuArray{Float64,3}
     weights::CuVector{Float64}
     configurations::CuMatrix{Int32} # zero-based sites, up electrons followed by down
@@ -71,6 +71,14 @@ function slater_basis(data, np, ns, ne, nq, nproj)
 end
 
 function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:Integer}, threads::Integer=32, initialize_wavefunctions::Bool=true)
+    return cuda_state_for_runner(data;configurations,threads,initialize_wavefunctions)
+end
+
+# PhysCal needs the Slater assembly, but no parameter-derivative basis. Keep
+# this choice private; public gpu_state retains its complete default workspace.
+function cuda_state_for_runner(data::ExpertModeData; configurations::AbstractMatrix{<:Integer},
+                               threads::Integer=32, initialize_wavefunctions::Bool=true,
+                               needs_derivatives::Bool=true)
     CUDA.functional() || throw(ArgumentError("A functional CUDA device is required"))
     validate_cuda_data(data)
     threads in (32,64,128,256) || throw(ArgumentError("walker block size must be 32, 64, 128 or 256"))
@@ -90,7 +98,7 @@ function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:In
     nq = max(1, data.modpara.nsp_gauss_leg) * max(1, abs(data.modpara.nmp_trans)) * max(1, data.n_qp_opt_trans)
     assembly = SlaterAssembly(data,nproj,ns,nq)
     if ns >= 64
-        basis = sparse_slater_basis(assembly,np)
+        basis = needs_derivatives ? sparse_slater_basis(assembly,np) : nothing
         weights = real.(data.qp_weights.qp_full_weight)
     else
         dense, weights = slater_basis(data,np,ns,ne,nq,nproj)
@@ -260,11 +268,11 @@ end
 
 function CPU.gpu_sample!(s::CUDAState; steps::Integer, exchange_fraction::Real=0,
                          tape=nothing, cache=nothing, empty_destinations::Bool=false,
-                         incremental_correlation::Bool=false)
+                         incremental_correlation::Bool=false,triangle_update::Bool=false)
     steps >= 0 || throw(ArgumentError("steps must be nonnegative"))
     0 <= exchange_fraction <= 1 || throw(ArgumentError("exchange_fraction must be in [0, 1]"))
     if cache===nothing
-        empty_destinations || incremental_correlation ?
+        empty_destinations || incremental_correlation || triangle_update ?
             throw(ArgumentError("cached sampler options require a sampling cache")) : nothing
     else
         cache isa GPUSamplingCache && cache.owner===s ||
@@ -275,7 +283,7 @@ function CPU.gpu_sample!(s::CUDAState; steps::Integer, exchange_fraction::Real=0
     draws isa CuArray{UInt32,3} || throw(ArgumentError("tape must be a device UInt32 array"))
     size(draws) == (5, batch, steps) || throw(DimensionMismatch("random tape dimensions"))
     cache !== nothing && return sample_with_cache!(s,cache,draws,exchange_fraction;
-        empty_destinations,incremental_correlation)
+        empty_destinations,incremental_correlation,triangle_update)
     if s.nsite >= 64
         @cuda threads=128 blocks=batch fastmath=false cooperative_sampling_kernel!(
             cooperative_state(s), draws, Float64(exchange_fraction))

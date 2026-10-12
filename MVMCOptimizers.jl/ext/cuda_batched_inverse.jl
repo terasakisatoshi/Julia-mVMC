@@ -19,17 +19,19 @@ struct BatchedInverse
     target_sites::CuMatrix{Int32}
     target_map::CuMatrix{Int32}
 end
-function BatchedInverse(s::CUDAState)
+function BatchedInverse(s::CUDAState; allocate_transform::Bool=true)
     n = 2s.nelec
     count = size(s.configurations,2)*s.nqp
-    lu = CUDA.zeros(Float64,n,n,count)
+    # Cache refresh gathers every LU entry before native factorization.
+    lu = CuArray{Float64}(undef,n,n,count)
     inverse = similar(lu)
     lu_ptrs = CuArray([pointer(lu,(i-1)*n*n+1) for i in 1:count])
     inverse_ptrs = CuArray([pointer(inverse,(i-1)*n*n+1) for i in 1:count])
     return BatchedInverse(lu,similar(lu),inverse,lu_ptrs,inverse_ptrs,
         CUDA.zeros(Int32,n,count),CUDA.zeros(Int32,n,count),CUDA.zeros(Float64,count),
         CUDA.zeros(Int32,count),CUDA.zeros(Int32,count),
-        CUDA.zeros(Float64,n,2s.nsite-n,count),CUDA.zeros(Float64,n,2s.nsite-n,count),
+        CUDA.zeros(Float64,n,allocate_transform ? 2s.nsite-n : 0,count),
+        CUDA.zeros(Float64,n,allocate_transform ? 2s.nsite-n : 0,count),
         CuArray([1.0]),CuArray([0.0]),CUDA.zeros(Int32,2s.nsite-n,size(s.configurations,2)),
         CUDA.zeros(Int32,2s.nsite,size(s.configurations,2)))
 end
@@ -151,8 +153,7 @@ function batched_transform_cache!(s,o,work::BatchedInverse)
         CUDA.cuBLAS.gemm_strided_batched!('N','N',work.alpha,work.inverse,
             work.slater_rows,work.beta,work.transformed)
     end
-    entries = n*2s.nsite*count
-    @cuda threads=256 blocks=cld(entries,256) fastmath=false publish_batched_transform!(
+    @cuda threads=(32,8) blocks=(cld(n*2s.nsite,32),cld(batch,32),s.nqp) fastmath=false tiled_publish_batched_transform!(
         cache_view(o.transformed),work.transformed,work.target_map,n,s.nsite,batch,count)
     return nothing
 end

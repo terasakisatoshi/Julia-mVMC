@@ -76,3 +76,18 @@ end
 module ObservableSamplingCache
 include("observable_sampling_cache.jl")
 end
+module TiledPublication
+include("tiled_publication.jl")
+end
+module RankoneObservables
+include("rankone_observables.jl")
+end
+module CompactTransform
+include("compact_transform.jl")
+end
+module LazyPhysBasis
+include("lazy_phys_basis.jl")
+end
+module InitialParallelQP
+include("initial_parallel_qp.jl")
+end
