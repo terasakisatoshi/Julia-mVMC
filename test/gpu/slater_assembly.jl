@@ -43,3 +43,32 @@ end
     @test out[2,3,1] ≈ 1.1e-15 atol=1e-30 rtol=1e-15
     @test out[4,3,1] ≈ 2.4e-15 atol=1e-30 rtol=1e-15
 end
+@testset "Direct sparse Slater coefficients match CPU unit assembly" begin
+    for model in ("hubbard_chain_real","L128")
+        path = model == "L128" ? joinpath(@__DIR__,"..","..","benchmark","cuda","inputs","hubbard_chain_L128","namelist.def") :
+            joinpath(@__DIR__,"..","..","examples","inputs",model,"namelist.def")
+        data,_ = GPU.prepared_gpu_data(path;seed=79)
+        ns,ne = data.modpara.nsite,data.modpara.nelec
+        np = CPU.count_total_parameters(data)
+        nproj = P.projection_layout(data).n_proj
+        nq = CPU.get_n_qp_full(data)
+        basis = GPU.sparse_slater_basis(GPU.SlaterAssembly(data,nproj,ns,nq),np)
+        ptr,rows,values = Array(basis.colPtr),Array(basis.rowVal),Array(basis.nzVal)
+        selected = collect(1:np)
+        oracledata = deepcopy(data)
+        oracle = CPU.VMCOptimizationState(ns,ne,nproj,np,nq,1,false,false)
+        unit = zeros(ComplexF64,np)
+        for p in selected
+            fill!(unit,0);unit[p]=1
+            CPU.unpack_parameters!(oracledata,unit)
+            CPU.update_slater_elm_fcmp!(oracledata,oracle)
+            column = zeros(Float64,size(basis,1))
+            for k in ptr[p]:ptr[p+1]-1
+                column[rows[k]] = values[k]
+            end
+            @test column ≈ real.(oracle.slater_matrix.slater_elm) atol=eps(Float64) rtol=eps(Float64)
+            @test issorted(rows[ptr[p]:ptr[p+1]-1])
+        end
+        @test length(values)*12+length(ptr)*4 < size(basis,1)*np*8
+    end
+end

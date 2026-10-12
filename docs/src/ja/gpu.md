@@ -20,7 +20,11 @@ phys = run_gpu_phys_cal_from_namelist(input;
 ```
 
 `device` は 0 始まりです。`warmup` と `interval` は walker ごとの提案回数で、
-CPU 入力の sweep 数とは異なります。seed を省略すると入力の `RndSeed` に従います。
+明示指定時は CPU 入力の sweep 数とは異なります。省略時は
+`walkers=NVMCSample`、`interval=NVMCInterval*Nsite`、
+`warmup=NVMCWarmUp*NVMCInterval*Nsite` を使います。PhysCal の反復数は
+`NDataQtySmp` に従います。各 walker を個別に熱平衡化します。
+seed を省略すると入力の `RndSeed` に従います。
 `initial_def=:auto` は隣接する `initial.def` を読み込みます。
 PhysCal の `opt_para="zqp_opt.dat"` で最適化済みパラメータを指定できます。
 最適化は energy の列と最終パラメータ、PhysCal は energy と入力順の Green 配列を返します。
@@ -56,5 +60,15 @@ L128 の Hubbard 入力を `benchmark/cuda/inputs/hubbard_chain_L128` に追加�
 大行列では Pfaffian の協調並列化、GPU 上の batched LU 逆行列、
 Slater 列のキャッシュ、演算子ごとの並列化、疎な解析微分の直接縮約を使います。
 特異な射影行列には既存の minor 計算を残します。
-初期化時には密な Slater 基底を構築・転送するため、GPU メモリの容量にも依存します。
+大きな格子では配置を GPU 上で初期化し、すべての射影行列が非特異であることを
+検証します。Slater 微分基底は直接 CSC 形式で構築し、L128 では約 12.44 MB
+（密行列では約 3.24 GB）です。サンプリングは Pfaffian・逆行列の更新を使い、
+パラメータ更新の境界で batched LU により再計算します。観測量もこのキャッシュを使います。
+SR のしきい値、パラメータのゲージ補正、ソルバー状態、エネルギー履歴は GPU に
+保持し、最終結果の返却時に転送します。
+
+全体の性能は `test/gpu/benchmark_end_to_end.jl` で計測します。
+入力読込・初期化・サンプリング・SR・結果返却を含み、初回コンパイルを分けます。
+CPU と GPU の保存サンプル総数は揃えますが、独立 walker と単一 CPU チェーンでは
+熱平衡化の提案数や軌跡が異なります。詳細は [測定結果](../en/gpu_benchmark.md) を参照してください。
 `JULIA_MVMC_GPU_INVERSE=cooperative` で Gauss-Jordan の比較経路を選択できます。

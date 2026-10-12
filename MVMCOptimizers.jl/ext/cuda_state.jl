@@ -6,7 +6,7 @@ struct CUDAState
     nqp::Int
     threads::Int
     parameters::CuVector{Float64}
-    basis::CuMatrix{Float64}
+    basis::Union{CuMatrix{Float64},CUDA.cuSPARSE.CuSparseMatrixCSC{Float64,Int32}}
     slater::CuArray{Float64,3}
     weights::CuVector{Float64}
     configurations::CuMatrix{Int32} # zero-based sites, up electrons followed by down
@@ -50,9 +50,9 @@ function validate_cuda_data(data)
     return nothing
 end
 
-# SlaterElm is exactly linear in the orbital parameters. Obtain its basis from
-# the authoritative CPU construction once, then use a device GEMV on updates.
-# This setup does not evaluate samples or perform Monte Carlo work on the host.
+# Small lattices retain the independent CPU unit-parameter derivative basis.
+# Large lattices build CSC coefficients directly from C four-block geometry.
+# Neither setup path evaluates samples or performs Monte Carlo work on the host.
 function slater_basis(data, np, ns, ne, nq, nproj)
     model = deepcopy(data)
     model.modpara.nmp_trans = max(1, abs(model.modpara.nmp_trans))
@@ -70,7 +70,7 @@ function slater_basis(data, np, ns, ne, nq, nproj)
     return basis, real.(model.qp_weights.qp_full_weight)
 end
 
-function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:Integer}, threads::Integer=32)
+function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:Integer}, threads::Integer=32, initialize_wavefunctions::Bool=true)
     CUDA.functional() || throw(ArgumentError("A functional CUDA device is required"))
     validate_cuda_data(data)
     threads in (32,64,128,256) || throw(ArgumentError("walker block size must be 32, 64, 128 or 256"))
@@ -88,13 +88,20 @@ function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:In
     np = CPU.count_total_parameters(data)
     nproj = Parsers.projection_layout(data).n_proj
     nq = max(1, data.modpara.nsp_gauss_leg) * max(1, abs(data.modpara.nmp_trans)) * max(1, data.n_qp_opt_trans)
-    basis, weights = slater_basis(data, np, ns, ne, nq, nproj)
+    assembly = SlaterAssembly(data,nproj,ns,nq)
+    if ns >= 64
+        basis = sparse_slater_basis(assembly,np)
+        weights = real.(data.qp_weights.qp_full_weight)
+    else
+        dense, weights = slater_basis(data,np,ns,ne,nq,nproj)
+        basis = CuArray(dense)
+    end
     params = CPU.pack_parameters(data)
     all(isreal, params) || throw(ArgumentError("CUDA parameters must be real"))
     gutz = data.n_gutzwiller_idx == 0 ? fill(Int32(-1), ns) : Int32.(data.gutzwiller_idx)
     jastrow = data.n_jastrow_idx == 0 ? fill(Int32(-1), ns, ns) : Int32.(data.jastrow_idx)
     size(jastrow) == (ns, ns) && length(gutz) == ns || throw(DimensionMismatch("projection indices"))
-    s = CUDAState(ns, ne, nproj, nq, Int(threads), CuArray(real.(params)), CuArray(basis),
+    s = CUDAState(ns, ne, nproj, nq, Int(threads), CuArray(real.(params)), basis,
         CUDA.zeros(Float64, 2ns, 2ns, nq), CuArray(weights), CuArray(Int32.(configurations)),
         CUDA.zeros(Int32, 2ns, batch), CUDA.zeros(Int32, nproj, batch), CuArray(gutz),
         CuArray(jastrow), data.n_gutzwiller_idx, data.n_jastrow_idx,
@@ -102,9 +109,9 @@ function CPU.gpu_state(data::ExpertModeData; configurations::AbstractMatrix{<:In
         CUDA.zeros(Float64, batch), CUDA.zeros(Float64, batch), CUDA.zeros(Float64, batch),
         CuArray(Int32.(CPU.get_loc_spn_array(data))), CUDA.zeros(Int32, batch),
         CUDA.zeros(Float64, 2ne, 2ne, ns >= 64 ? batch : 0),
-        SlaterAssembly(data,nproj,ns,nq))
+        assembly)
     refresh_slater!(s)
-    CPU.gpu_wavefunctions!(s)
+    initialize_wavefunctions && CPU.gpu_wavefunctions!(s)
     return s
 end
 
@@ -252,13 +259,23 @@ function sampling_kernel!(cfg, counts, occ, overlaps, logs, accepted, localspins
 end
 
 function CPU.gpu_sample!(s::CUDAState; steps::Integer, exchange_fraction::Real=0,
-                         tape=nothing)
+                         tape=nothing, cache=nothing, empty_destinations::Bool=false,
+                         incremental_correlation::Bool=false)
     steps >= 0 || throw(ArgumentError("steps must be nonnegative"))
     0 <= exchange_fraction <= 1 || throw(ArgumentError("exchange_fraction must be in [0, 1]"))
+    if cache===nothing
+        empty_destinations || incremental_correlation ?
+            throw(ArgumentError("cached sampler options require a sampling cache")) : nothing
+    else
+        cache isa GPUSamplingCache && cache.owner===s ||
+            throw(ArgumentError("sampling cache belongs to a different state"))
+    end
     batch = size(s.configurations, 2)
     draws = tape === nothing ? CUDA.rand(UInt32, 5, batch, steps) : tape
     draws isa CuArray{UInt32,3} || throw(ArgumentError("tape must be a device UInt32 array"))
     size(draws) == (5, batch, steps) || throw(DimensionMismatch("random tape dimensions"))
+    cache !== nothing && return sample_with_cache!(s,cache,draws,exchange_fraction;
+        empty_destinations,incremental_correlation)
     if s.nsite >= 64
         @cuda threads=128 blocks=batch fastmath=false cooperative_sampling_kernel!(
             cooperative_state(s), draws, Float64(exchange_fraction))

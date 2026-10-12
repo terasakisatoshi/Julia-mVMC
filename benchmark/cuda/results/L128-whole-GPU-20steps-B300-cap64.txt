@@ -1,0 +1,47 @@
+benchmark_scope=whole public runner, including parsing, initialization, sampling, numerical work, SR where applicable, and final returned summary
+Julia=1.13.1 Julia_threads=1 CPU_BLAS=LBTConfig([ILP64] libopenblas64_.so)
+GPU_device=1 GPU_name=NVIDIA GeForce RTX 3060
+original_input=/home/terasaki/work/atelierarith/julia-mvmc-gpu/benchmark/cuda/inputs/hubbard_chain_L128/namelist.def retained_run_directory=/tmp/jl_fIr6Cd
+backend=gpu nsite=128 optimization_steps=20 samples_per_step=300 PhysCal_runs=1 warmup_sweeps=1 interval_sweeps=1 seed=79 repetitions=3
+fixed_parameter_sha256=36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8
+benchmark_source_sha256=7c3ad955163cf6b2d31aa6265d8aafa0cffd11ea8f179be69a8dd07c8a71d65b
+namelist_sha256=8c12fb80972128ac0921a15f957a7bc00b38ac9cc6cf0d3e0e0dd6d9efdbab00 modpara_sha256=ede08d741d7c49de3d7b8404654f87857f14a7776c4a1ae69c1214ec4eec6902
+CPU_source_sha256 vmc_sampling.jl ccdf89e6481969d5986d6e04293bf4ef6f1a85babb346a6927732e54a4e9ccdf
+CPU_source_sha256 vmc_para_opt.jl 3903655bdc4ac0dc0bd3dfadc4b5e0e98c64a7504b54cc62ed4663ee447a46d1
+CPU_source_sha256 vmc_phys_cal.jl 591ed75b32317ec487b1f8d8c8019856b0c6003a33f5b3e29faf079eb7e917f7
+script_loading_compilation_and_untimed_benchmark_preparation_seconds=44.606029412
+CPU_opt_attempt_budget=770560 GPU_opt_attempt_budget=806400 CPU_PhysCal_attempt_budget=38528 GPU_PhysCal_attempt_budget=76800
+sampling_difference=CPU one sequential SFMT chain with draw-until-empty destinations and burn-state reuse; GPU 300 independent XORWOW chains with one initial warmup and 128 attempts per interval; see selected proposal-mode metadata below
+GPU_sampling_mode=update GPU_initialization_mode=gpu
+GPU_configured_proposals=empty GPU_configured_correlation=delta GPU_configured_observables=reuse GPU_configured_inverse=batched
+GPU_proposal_mode_description=uniform-empty hopping destinations; exact incremental projection counts; sampling inverse reused for observables; resident native SR and parameter gauge; sampler maxregs=64; retained initial Pfaffians; sort-free two-pass CSC assembly
+GPU_source_sha256 cuda_runners.jl b658b132d996e267fec38a23bdfa4bfb5149712d99021ad086cb332bf364ac88
+GPU_source_sha256 cuda_state.jl 8c80f1980e65acf5ea99ecfa2977a8b6908e4555fccc435c9549dd4e3485f7e3
+GPU_source_sha256 cuda_sampling_update.jl 064b3e14a626309fe25556359a582995bf5e45266fd157e1aea822092eeed3b1
+proposal_counts_are_not_valid_move_counts_or_effective_sample_sizes=true
+CPU_valid_and_accepted_counts=not_exposed_by_public_runner GPU_valid_counts=not_exposed GPU_accepted_count=last_interval_only_after_timing
+derived_valid_hopping_candidate_budgets=all configured attempts have a legal empty destination for this nonlocal-spin input; these are model/proposal deductions, not measured counters
+output_difference=CPU writes C-format per-step/final files; GPU returns numerical arrays and performs final summaries/transfers without those files
+cold_first_execution_includes_compilation_and_real_work=true; reported separately, not used in warm timing ratio
+phase=cold rep=1 GPU_optimization_seconds=60.085999036 energy_per_site=0.787693834956249 accepted_last_interval=13994
+phase=cold rep=1 GPU_PhysCal_seconds=1.395791224 energy_per_site=0.9232191782355761 accepted_last_interval=14325
+phase=cold CPU_opt_seconds=Float64[] GPU_opt_seconds=[60.085999036]
+phase=cold CPU_PhysCal_seconds=Float64[] GPU_PhysCal_seconds=[1.395791224]
+phase=warm rep=1 GPU_optimization_seconds=11.864165717 energy_per_site=0.787693834956249 accepted_last_interval=13994
+phase=warm rep=1 GPU_PhysCal_seconds=0.906833931 energy_per_site=0.9232191782355761 accepted_last_interval=14325
+phase=warm rep=2 GPU_optimization_seconds=11.880997581 energy_per_site=0.787693834956249 accepted_last_interval=13994
+phase=warm rep=2 GPU_PhysCal_seconds=0.908728961 energy_per_site=0.9232191782355761 accepted_last_interval=14325
+phase=warm rep=3 GPU_optimization_seconds=11.866678663 energy_per_site=0.787693834956249 accepted_last_interval=13994
+phase=warm rep=3 GPU_PhysCal_seconds=0.91309586 energy_per_site=0.9232191782355761 accepted_last_interval=14325
+phase=warm CPU_opt_seconds=Float64[] GPU_opt_seconds=[11.864165717, 11.880997581, 11.866678663]
+phase=warm CPU_PhysCal_seconds=Float64[] GPU_PhysCal_seconds=[0.906833931, 0.908728961, 0.91309586]
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully

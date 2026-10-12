@@ -107,7 +107,8 @@ end
 function CUDASR(s::CUDAState, data)
     np = length(s.parameters)
     flags = [CPU.get_opt_flag_for_parameter(data, 2(p-1)) != 0 for p in 1:np]
-    sparse = s.nsite >= 64 ? CUDA.cuSPARSE.CuSparseMatrixCSC(s.basis) : nothing
+    sparse = s.basis isa CUDA.cuSPARSE.CuSparseMatrixCSC ? s.basis :
+        (s.nsite >= 64 ? CUDA.cuSPARSE.CuSparseMatrixCSC(s.basis) : nothing)
     decoded = sparse === nothing ? nothing : decoded_sparse_basis(sparse,s.nsite)
     return CUDASR(CUDA.zeros(Float64, np, size(s.configurations,2)),
                   similar(s.factors), CuArray(flags),
@@ -238,14 +239,33 @@ function sr_moments(O, energies)
     return (; meanO, meanE, OO, HO, covariance)
 end
 
+# Keep BLAS scalar arguments resident. The generic products above construct
+# alpha/beta CuRefs on each call; CuMatrix subtraction also invokes GEAM with
+# uploaded scalars. Retain the same products and division order as the reference.
+function sr_moments(sr::CUDASR, energies)
+    O = sr.derivatives
+    batch = size(O,2)
+    meanO = vec(sum(O; dims=2)) ./ batch
+    meanE = sum(energies; dims=1) ./ batch
+    OO = similar(O, size(O,1), size(O,1))
+    HO = similar(energies, size(O,1))
+    CUDA.cuBLAS.gemm!('N', 'T', sr.alpha, O, O, sr.beta, OO)
+    CUDA.cuBLAS.gemv!('N', sr.alpha, O, energies, sr.beta, HO)
+    OO ./= batch
+    HO ./= batch
+    outer = meanO * transpose(meanO)
+    covariance = OO .- outer
+    return (; meanO, meanE, OO, HO, covariance)
+end
+
 function sr_system_kernel!(S, rhs, variance, flags, meanO, meanE, HO, cutoff, delta, dt, np)
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > np && return nothing
     @inbounds begin
-        active_i = flags[i] && variance[i] > cutoff
+        active_i = flags[i] && variance[i] > cutoff[1]
         rhs[i] = active_i ? -2dt * (HO[i] - meanE[1]*meanO[i]) : 0.0
         for j in 1:np
-            active_j = flags[j] && variance[j] > cutoff
+            active_j = flags[j] && variance[j] > cutoff[1]
             if !active_i || !active_j
                 S[i,j] = i == j ? 1.0 : 0.0
             elseif i == j
@@ -259,9 +279,8 @@ end
 function sr_update!(s::CUDAState, sr::CUDASR, moments, modpara)
     S = copy(moments.covariance)
     variance = diag(S)
-    # One scalar at an optimization boundary. Neither samples nor matrices
-    # leave the device; cuSOLVER factorization and parameter updates stay there.
-    cutoff = maximum(abs, variance) * modpara.dsr_opt_red_cut
+    # Preserve the reduction on device, including the scalar cutoff result.
+    cutoff = maximum(abs, variance; dims=1) .* modpara.dsr_opt_red_cut
     rhs = similar(s.parameters)
     np = length(rhs)
     @cuda threads=128 blocks=cld(np,128) fastmath=false sr_system_kernel!(S, rhs,

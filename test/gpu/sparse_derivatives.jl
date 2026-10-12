@@ -46,10 +46,10 @@ include("cpu_oracle.jl")
     actual = vec(Array(sr.derivatives))
     @test all(isfinite,expected)
     @test actual ≈ expected atol=1e-9 rtol=1e-9
-    # The original dense contraction remains an independent numeric cross-check;
+    # cuSPARSE matrix multiplication independently checks the custom contraction;
     # finish_derivatives! separately overwrites projection rows with counts.
     dense = similar(sr.derivatives)
-    CUDA.cuBLAS.gemm!('T','N',sr.alpha,state.basis,sr.sensitivity,sr.beta,dense)
+    mul!(dense,transpose(state.basis),sr.sensitivity)
     @test vec(Array(dense))[state.nproj+1:end] ≈ actual[state.nproj+1:end] atol=1e-9 rtol=1e-9
     @test actual[1:state.nproj] ≈ Float64.(vec(Array(state.counts))) atol=0 rtol=0
     # Build only the inverse cache; avoid the unrelated full Green workload.

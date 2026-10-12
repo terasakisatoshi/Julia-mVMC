@@ -197,9 +197,12 @@ function CUDAObservables(s::CUDAState, data; measure_greens=true)
         use_batched ? BatchedInverse(s) : nothing)
 end
 
-function CPU.gpu_observables!(s::CUDAState, o::CUDAObservables)
+function CPU.gpu_observables!(s::CUDAState, o::CUDAObservables;sampling_cache=nothing)
     batch = size(s.configurations, 2)
-    if o.batched_inverse !== nothing
+    if sampling_cache !== nothing
+        sampling_cache isa GPUSamplingCache || throw(ArgumentError("invalid sampling cache"))
+        observable_sampling_cache!(s,o,sampling_cache)
+    elseif o.batched_inverse !== nothing
         batched_inverse_cache!(s,o,o.batched_inverse)
     elseif s.nelec >= 32
         @cuda threads=256 blocks=batch shmem=16s.nelec fastmath=false cooperative_inverse_cache_kernel!(

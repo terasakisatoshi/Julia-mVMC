@@ -1,0 +1,140 @@
+benchmark_scope=whole public runner, including parsing, initialization, sampling, numerical work, SR where applicable, and final returned summary
+Julia=1.13.1 Julia_threads=1 CPU_BLAS=LBTConfig([ILP64] libopenblas64_.so)
+GPU_execution=disabled_for_CPU_only_baseline
+original_input=/home/terasaki/work/atelierarith/julia-mvmc-gpu/benchmark/cuda/inputs/hubbard_chain_L128/namelist.def retained_run_directory=/tmp/jl_IHwZDn
+backend=cpu nsite=128 optimization_steps=20 samples_per_step=300 PhysCal_runs=1 warmup_sweeps=1 interval_sweeps=1 seed=79 repetitions=3
+fixed_parameter_sha256=36cef06347facd5645882d229405bc81095d31731454d821df5fc1bcad014db8
+benchmark_source_sha256=96b34518f1373b69b819187c267db182cc38f8ef6dc479648185f5bd51b4f787
+namelist_sha256=8c12fb80972128ac0921a15f957a7bc00b38ac9cc6cf0d3e0e0dd6d9efdbab00 modpara_sha256=ede08d741d7c49de3d7b8404654f87857f14a7776c4a1ae69c1214ec4eec6902
+CPU_source_sha256 vmc_sampling.jl ccdf89e6481969d5986d6e04293bf4ef6f1a85babb346a6927732e54a4e9ccdf
+CPU_source_sha256 vmc_para_opt.jl 3903655bdc4ac0dc0bd3dfadc4b5e0e98c64a7504b54cc62ed4663ee447a46d1
+CPU_source_sha256 vmc_phys_cal.jl 591ed75b32317ec487b1f8d8c8019856b0c6003a33f5b3e29faf079eb7e917f7
+script_loading_compilation_and_untimed_benchmark_preparation_seconds=53.489060725
+CPU_opt_attempt_budget=770560 GPU_opt_attempt_budget=806400 CPU_PhysCal_attempt_budget=38528 GPU_PhysCal_attempt_budget=76800
+sampling_difference=CPU one sequential SFMT chain with draw-until-empty destinations and burn-state reuse; GPU 300 independent XORWOW chains with invalid-destination self-loops, one initial warmup, and 128 attempts per interval
+proposal_counts_are_not_valid_move_counts_or_effective_sample_sizes=true
+CPU_valid_and_accepted_counts=not_exposed_by_public_runner GPU_valid_counts=not_exposed GPU_accepted_count=last_interval_only_after_timing
+output_difference=CPU writes C-format per-step/final files; GPU returns numerical arrays and performs final summaries/transfers without those files
+cold_first_execution_includes_compilation_and_real_work=true; reported separately, not used in warm timing ratio
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=cold rep=1 CPU_optimization_seconds=95.87248081 energy_per_site=0.7748342010110156
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=cold rep=1 CPU_PhysCal_seconds=6.12532545 energy_per_site=0.9301644037927412 output_dir=/tmp/jl_IHwZDn/cold-1/cpu-physcal
+phase=cold CPU_opt_seconds=[95.87248081] GPU_opt_seconds=Float64[]
+phase=cold CPU_PhysCal_seconds=[6.12532545] GPU_PhysCal_seconds=Float64[]
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=warm rep=1 CPU_optimization_seconds=74.071758274 energy_per_site=0.7748342010110156
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=warm rep=1 CPU_PhysCal_seconds=4.556544644 energy_per_site=0.9301644037927412 output_dir=/tmp/jl_IHwZDn/warm-1/cpu-physcal
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=warm rep=2 CPU_optimization_seconds=80.85159754 energy_per_site=0.7748342010110156
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=warm rep=2 CPU_PhysCal_seconds=4.546805213 energy_per_site=0.9301644037927412 output_dir=/tmp/jl_IHwZDn/warm-2/cpu-physcal
+Progress of Optimization: 0 %
+Progress of Optimization: 5 %
+Progress of Optimization: 10 %
+Progress of Optimization: 15 %
+Progress of Optimization: 20 %
+Progress of Optimization: 25 %
+Progress of Optimization: 30 %
+Progress of Optimization: 35 %
+Progress of Optimization: 40 %
+Progress of Optimization: 45 %
+Progress of Optimization: 50 %
+Progress of Optimization: 55 %
+Progress of Optimization: 60 %
+Progress of Optimization: 65 %
+Progress of Optimization: 70 %
+Progress of Optimization: 75 %
+Progress of Optimization: 80 %
+Progress of Optimization: 85 %
+Progress of Optimization: 90 %
+Progress of Optimization: 95 %
+Start: Output opt params.
+End: Output opt params.
+phase=warm rep=3 CPU_optimization_seconds=75.161159438 energy_per_site=0.7748342010110156
+Start: Calculate VMC physical quantities. Sampling: 0 / 1
+End  : Calculate VMC physical quantities. Sampling: 0 / 1
+phase=warm rep=3 CPU_PhysCal_seconds=4.478890495 energy_per_site=0.9301644037927412 output_dir=/tmp/jl_IHwZDn/warm-3/cpu-physcal
+phase=warm CPU_opt_seconds=[74.071758274, 80.85159754, 75.161159438] GPU_opt_seconds=Float64[]
+phase=warm CPU_PhysCal_seconds=[4.556544644, 4.546805213, 4.478890495] GPU_PhysCal_seconds=Float64[]
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+[ Info: Parsing completed successfully
+[ Info: Parsing completed successfully
+[ Info: NPara=772 (NProj=260 + NRBM=0 + NOrbitalIdx=512 + NOptTrans=0)
+[ Info: Parsing completed successfully

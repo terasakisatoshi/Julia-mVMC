@@ -3,7 +3,9 @@ using Documenter
 const CUDA_BENCHMARK_REPORT = read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results",
     "linux-x86_64-rtx3060-2026-10-12.md"), String) * "\n\n---\n\n" *
     read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results",
-    "linux-x86_64-rtx3060-L128-2026-10-12.md"), String)
+    "linux-x86_64-rtx3060-L128-2026-10-12.md"), String) * "\n\n---\n\n" *
+    read(joinpath(@__DIR__, "..", "benchmark", "cuda", "results",
+    "linux-x86_64-rtx3060-L128-whole-2026-10-12.md"), String)
 
 const PAGES = [
     "Home" => "index.md",

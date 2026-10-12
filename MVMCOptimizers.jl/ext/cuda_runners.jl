@@ -63,6 +63,8 @@ function validate_initial_walkers(s::CUDAState, configurations)
         throw(ArgumentError("initial walkers must have finite nonzero overlap"))
     all(isfinite, s.logcorrelations) || throw(ArgumentError("initial correlation factors must be finite"))
     loc = Array(s.localspins)
+    any(==(1),loc) || return nothing
+    configurations = configurations isa CuArray ? Array(configurations) : configurations
     for b in axes(configurations,2), site in eachindex(loc)
         if loc[site] == 1
             count(==(site-1), view(configurations,:,b)) == 1 ||
@@ -72,22 +74,68 @@ function validate_initial_walkers(s::CUDAState, configurations)
     return nothing
 end
 
-function CPU.gpu_phys_cal!(data::ExpertModeData; configurations, nsamples::Integer=1,
+function runner_sampling_cache(s::CUDAState)
+    mode = get(ENV,"JULIA_MVMC_GPU_SAMPLING","update")
+    mode in ("update","refactor") || throw(ArgumentError("GPU sampling must be update or refactor"))
+    return s.nsite >= 64 && mode == "update" ? GPUSamplingCache(s) : nothing
+end
+
+function runner_sampling_options(cache)
+    proposal = get(ENV,"JULIA_MVMC_GPU_PROPOSALS","empty")
+    correlation = get(ENV,"JULIA_MVMC_GPU_CORRELATION","delta")
+    proposal in ("empty","self-loop") || throw(ArgumentError("GPU proposals must be empty or self-loop"))
+    correlation in ("delta","full") || throw(ArgumentError("GPU correlation must be delta or full"))
+    return (;empty_destinations=cache !== nothing && proposal == "empty",
+        incremental_correlation=cache !== nothing && correlation == "delta")
+end
+
+function runner_observable_cache(cache)
+    mode=get(ENV,"JULIA_MVMC_GPU_OBSERVABLES","reuse")
+    mode in ("reuse","refactor") || throw(ArgumentError("GPU observables must be reuse or refactor"))
+    return mode == "reuse" ? cache : nothing
+end
+
+function prepared_runner_state(data,walkers,rng,seed)
+    mode = get(ENV,"JULIA_MVMC_GPU_INITIALIZATION",data.modpara.nsite >= 64 ? "gpu" : "cpu")
+    mode in ("gpu","cpu") || throw(ArgumentError("GPU initialization must be gpu or cpu"))
+    if mode == "gpu"
+        s,pf=initial_gpu_state(data,walkers;seed,return_pfaffians=true)
+        return s,false,pf
+    end
+    cfg = initial_configurations(data,walkers,rng)
+    return CPU.gpu_state(data;configurations=cfg),true,nothing
+end
+
+function runner_sampling_lengths(data,walkers,warmup,interval)
+    m=data.modpara
+    batch=walkers === nothing ? m.nvmc_sample : Int(walkers)
+    spacing=interval === nothing ? m.nvmc_interval*m.nsite : Int(interval)
+    thermal=warmup === nothing ? m.nvmc_warmup*m.nvmc_interval*m.nsite : Int(warmup)
+    batch > 0 && spacing >= 0 && thermal >= 0 || throw(ArgumentError("invalid sampling lengths"))
+    return batch,thermal,spacing
+end
+
+function gpu_phys_cal_runner!(data::ExpertModeData; configurations, nsamples::Integer=1,
                           warmup::Integer=10, interval::Integer=1, seed::Integer=79,
-                          callback=nothing)
+                          callback=nothing, state=nothing, seed_rng::Bool=true, initial_pfaffians=nothing)
     nsamples > 0 && warmup >= 0 && interval >= 0 || throw(ArgumentError("invalid sampling lengths"))
     # Validate operator tables before RNG use or launch.
     operator_tables(data)
-    s = CPU.gpu_state(data; configurations)
+    s = state === nothing ? CPU.gpu_state(data; configurations) : state
     validate_initial_walkers(s, configurations)
     o = CUDAObservables(s, data)
-    CUDA.seed!(seed)
+    sampler = runner_sampling_cache(s)
+    sampling_inverse = sampler === nothing ? nothing : BatchedSamplingInverse(s)
+    sampling_options = runner_sampling_options(sampler)
+    observable_cache = o.batched_inverse === nothing ? nothing : runner_observable_cache(sampler)
+    seed_rng && CUDA.seed!(seed)
     ex = exchange_probability(data)
-    CPU.gpu_sample!(s; steps=warmup, exchange_fraction=ex)
+    sampler !== nothing && refresh_sampling_state!(s,sampler,sampling_inverse;initial_pfaffians)
+    CPU.gpu_sample!(s; steps=warmup, exchange_fraction=ex, cache=sampler, sampling_options...)
     accumulator = CUDA.zeros(Float64, size(o.values,1))
     for sample in 1:nsamples
-        CPU.gpu_sample!(s; steps=interval, exchange_fraction=ex)
-        CPU.gpu_observables!(s, o)
+        CPU.gpu_sample!(s; steps=interval, exchange_fraction=ex, cache=sampler, sampling_options...)
+        CPU.gpu_observables!(s, o;sampling_cache=observable_cache)
         accumulator .+= vec(sum(o.values; dims=2)) ./ size(o.values,2)
         callback !== nothing && callback(sample, s, o)
     end
@@ -98,61 +146,86 @@ function CPU.gpu_phys_cal!(data::ExpertModeData; configurations, nsamples::Integ
             green_two_ex=means[2+length(o.one)+length(o.two):end], state=s)
 end
 
-function CPU.gpu_para_opt!(data::ExpertModeData; configurations, nsteps::Integer,
+function gpu_para_opt_runner!(data::ExpertModeData; configurations, nsteps::Integer,
                           warmup::Integer=10, interval::Integer=1, seed::Integer=79,
-                          callback=nothing)
+                          callback=nothing, state=nothing, seed_rng::Bool=true, initial_pfaffians=nothing)
     nsteps > 0 && warmup >= 0 && interval >= 0 || throw(ArgumentError("invalid optimization lengths"))
     data.modpara.nsrcg == 0 || throw(ArgumentError("CUDA currently uses direct SR (NSRCG=0)"))
     operator_tables(data)
-    s = CPU.gpu_state(data; configurations)
+    s = state === nothing ? CPU.gpu_state(data; configurations) : state
     validate_initial_walkers(s, configurations)
     o = CUDAObservables(s, data; measure_greens=false)
     sr = CUDASR(s, data)
-    CUDA.seed!(seed)
+    solver = CUDASRSolver(length(s.parameters))
+    sampler = runner_sampling_cache(s)
+    gauge = CUDAParameterGauge(data)
+    sampling_inverse = sampler === nothing ? nothing : BatchedSamplingInverse(s)
+    sampling_options = runner_sampling_options(sampler)
+    observable_cache = o.batched_inverse === nothing ? nothing : runner_observable_cache(sampler)
+    seed_rng && CUDA.seed!(seed)
     ex = exchange_probability(data)
-    CPU.gpu_sample!(s; steps=warmup, exchange_fraction=ex)
-    energies = Float64[]
+    sampler !== nothing && refresh_sampling_state!(s,sampler,sampling_inverse;initial_pfaffians)
+    CPU.gpu_sample!(s; steps=warmup, exchange_fraction=ex, cache=sampler, sampling_options...)
+    energy_history = CUDA.zeros(Float64,nsteps)
     for step in 1:nsteps
-        CPU.gpu_sample!(s; steps=interval, exchange_fraction=ex)
-        CPU.gpu_observables!(s, o)
+        CPU.gpu_sample!(s; steps=interval, exchange_fraction=ex, cache=sampler, sampling_options...)
+        CPU.gpu_observables!(s, o;sampling_cache=observable_cache)
         derivatives!(s, sr, o)
         e = copy(vec(view(o.values,1,:)))
-        moments = sr_moments(sr.derivatives, e)
-        sr_update!(s, sr, moments, data.modpara)
-        # C's gauge shifts and Slater normalization at a step boundary. Only
-        # O(NPara) scalars cross the bus, never configurations/OO/O/Green data.
-        CPU.unpack_parameters!(data, ComplexF64.(Array(s.parameters)))
-        CPU.sync_modified_parameter!(data)
-        copyto!(s.parameters, real.(CPU.pack_parameters(data)))
+        moments = sr_moments(sr, e)
+        resident_sr_update!(s,sr,moments,data.modpara,solver)
+        sync_gpu_parameters!(s,gauge)
         refresh_slater!(s)
-        CPU.gpu_wavefunctions!(s)
-        push!(energies, only(Array(moments.meanE)))
+        if sampler === nothing
+            CPU.gpu_wavefunctions!(s)
+        else
+            refresh_sampling_state!(s,sampler,sampling_inverse)
+        end
+        view(energy_history,step:step) .= moments.meanE
         callback !== nothing && callback(step, s, moments)
     end
-    return (; status=0, energies, parameters=Array(s.parameters), state=s)
+    check_sr_solver(solver)
+    parameters = Array(s.parameters)
+    CPU.unpack_parameters!(data,ComplexF64.(parameters))
+    return (; status=0, energies=Array(energy_history), parameters, state=s)
+end
+
+# Prepared states are internal to the namelist runners. Public low-level calls
+# always construct and validate a state against their supplied model.
+function CPU.gpu_phys_cal!(data::ExpertModeData; configurations, nsamples::Integer=1,
+        warmup::Integer=10, interval::Integer=1, seed::Integer=79, callback=nothing)
+    return gpu_phys_cal_runner!(data; configurations, nsamples, warmup, interval, seed, callback)
+end
+
+function CPU.gpu_para_opt!(data::ExpertModeData; configurations, nsteps::Integer,
+        warmup::Integer=10, interval::Integer=1, seed::Integer=79, callback=nothing)
+    return gpu_para_opt_runner!(data; configurations, nsteps, warmup, interval, seed, callback)
 end
 
 function CPU.run_gpu_para_opt_from_namelist(namelist::AbstractString;
-        nsteps::Integer, walkers::Integer=256, device::Integer=0, seed::Union{Integer,Nothing}=nothing,
-        initial_def=:auto, warmup::Integer=10, interval::Integer=1, callback=nothing)
-    walkers > 0 || throw(ArgumentError("walkers must be positive"))
+        nsteps::Integer, walkers::Union{Integer,Nothing}=nothing, device::Integer=0,
+        seed::Union{Integer,Nothing}=nothing, initial_def=:auto,
+        warmup::Union{Integer,Nothing}=nothing, interval::Union{Integer,Nothing}=nothing, callback=nothing)
     CUDA.device!(device)
     data, rng = prepared_gpu_data(namelist; seed, initial_def)
-    cfg = initial_configurations(data, walkers, rng)
-    result = CPU.gpu_para_opt!(data; configurations=cfg, nsteps, warmup, interval,
-                               seed=data.modpara.rnd_seed, callback)
+    walkers,warmup,interval=runner_sampling_lengths(data,walkers,warmup,interval)
+    s,seed_rng,initial_pfaffians = prepared_runner_state(data,walkers,rng,data.modpara.rnd_seed)
+    result = gpu_para_opt_runner!(data; configurations=s.configurations, nsteps, warmup, interval,
+                               seed=data.modpara.rnd_seed, callback, state=s, seed_rng, initial_pfaffians)
     return merge(result, (; data))
 end
 
 function CPU.run_gpu_phys_cal_from_namelist(namelist::AbstractString;
-        opt_para=nothing, nsamples::Integer=1, walkers::Integer=256, device::Integer=0,
-        seed::Union{Integer,Nothing}=nothing, initial_def=:auto, warmup::Integer=10, interval::Integer=1,
+        opt_para=nothing, nsamples::Union{Integer,Nothing}=nothing, walkers::Union{Integer,Nothing}=nothing,
+        device::Integer=0, seed::Union{Integer,Nothing}=nothing, initial_def=:auto,
+        warmup::Union{Integer,Nothing}=nothing, interval::Union{Integer,Nothing}=nothing,
         callback=nothing)
-    walkers > 0 || throw(ArgumentError("walkers must be positive"))
     CUDA.device!(device)
     data, rng = prepared_gpu_data(namelist; seed, initial_def, opt_para, physcal=true)
-    cfg = initial_configurations(data, walkers, rng)
-    result = CPU.gpu_phys_cal!(data; configurations=cfg, nsamples, warmup, interval,
-                               seed=data.modpara.rnd_seed, callback)
+    walkers,warmup,interval=runner_sampling_lengths(data,walkers,warmup,interval)
+    nsamples=nsamples === nothing ? data.modpara.n_data_qty_smp : Int(nsamples)
+    s,seed_rng,initial_pfaffians = prepared_runner_state(data,walkers,rng,data.modpara.rnd_seed)
+    result = gpu_phys_cal_runner!(data; configurations=s.configurations, nsamples, warmup, interval,
+                               seed=data.modpara.rnd_seed, callback, state=s, seed_rng, initial_pfaffians)
     return merge(result, (; data))
 end

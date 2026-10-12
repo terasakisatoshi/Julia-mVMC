@@ -79,3 +79,62 @@ function assemble_slater!(s,assembly::SlaterAssembly)
         assembly.sign_a,assembly.sign_b,assembly.cs,assembly.cc,assembly.ss,ns,nq)
     return s.slater
 end
+
+# Unit-parameter coefficients from the same C four-block expressions. Coincident
+# a/b parameter indices are combined before evaluation, exactly as CPU unit
+# assembly does; no sparse duplicate-reduction arithmetic is introduced.
+@inline function slater_unit_coefficient(a,b,cs,cc,ss,rowspin,columnspin)
+    if rowspin == 0
+        return columnspin == 0 ? -(a-b)*cs : a*cc+b*ss
+    end
+    return columnspin == 0 ? -a*ss-b*cc : (a-b)*cs
+end
+
+function slater_sparse_pass!(positions,rows,values,pa,pb,sa,sb,cs,cc,ss,ns,nq,::Val{write}) where {write}
+    row = 0
+    # This is C's flattened row order. Each column therefore receives sorted
+    # entries directly, without tuples, duplicate summation or sorting.
+    @inbounds for q in 1:nq, rowspin in 0:1, ri in 1:ns, columnspin in 0:1, rj in 1:ns
+        row += 1
+        ia,ib = Int(pa[ri,rj,q]),Int(pb[ri,rj,q])
+        a,b = Float64(sa[ri,rj,q]),Float64(sb[ri,rj,q])
+        x = slater_unit_coefficient(a,ia == ib ? b : 0.0,cs[q],cc[q],ss[q],rowspin,columnspin)
+        if x != 0
+            if write
+                slot = positions[ia]
+                rows[slot] = Int32(row); values[slot] = x
+            end
+            positions[ia] += 1
+        end
+        if ia != ib
+            y = slater_unit_coefficient(0.0,b,cs[q],cc[q],ss[q],rowspin,columnspin)
+            if y != 0
+                if write
+                    slot = positions[ib]
+                    rows[slot] = Int32(row); values[slot] = y
+                end
+                positions[ib] += 1
+            end
+        end
+    end
+    return nothing
+end
+
+function sparse_slater_basis(assembly::SlaterAssembly,np::Integer)
+    ns,nq = assembly.nsite,assembly.nqp
+    pa,pb = Array(assembly.parameter_a),Array(assembly.parameter_b)
+    sa,sb = Array(assembly.sign_a),Array(assembly.sign_b)
+    cs,cc,ss = Array(assembly.cs),Array(assembly.cc),Array(assembly.ss)
+    counts = zeros(Int32,np)
+    slater_sparse_pass!(counts,nothing,nothing,pa,pb,sa,sb,cs,cc,ss,ns,nq,Val(false))
+    pointers = Vector{Int32}(undef,np+1)
+    pointers[1] = 1
+    for p in 1:np
+        pointers[p+1] = pointers[p]+counts[p]
+    end
+    rows = Vector{Int32}(undef,Int(pointers[end])-1)
+    values = Vector{Float64}(undef,length(rows))
+    positions = pointers[1:np]
+    slater_sparse_pass!(positions,rows,values,pa,pb,sa,sb,cs,cc,ss,ns,nq,Val(true))
+    return CUDA.cuSPARSE.CuSparseMatrixCSC(CuArray(pointers),CuArray(rows),CuArray(values),(4ns*ns*nq,Int(np)))
+end

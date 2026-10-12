@@ -49,3 +49,30 @@ end
 module SlaterAssemblyRegression
 include("slater_assembly.jl")
 end
+module CachedSampling
+include("cached_sampling.jl")
+end
+module InitialSampling
+include("initial_sampling.jl")
+end
+module ParameterSync
+include("parameter_sync.jl")
+end
+module ResidentSRSolver
+include("sr_solver.jl")
+end
+module CachedSamplingL128
+include("cached_sampling_l128.jl")
+end
+module EmptyDestinations
+include("empty_destinations.jl")
+end
+module SamplingInverse
+include("sampling_inverse.jl")
+end
+module LargeRunners
+include("large_runners.jl")
+end
+module ObservableSamplingCache
+include("observable_sampling_cache.jl")
+end
